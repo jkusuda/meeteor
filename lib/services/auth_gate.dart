@@ -1,5 +1,5 @@
-import 'package:astrophotography_blog/screens/home.dart';
 import 'package:astrophotography_blog/screens/login.dart';
+import 'package:astrophotography_blog/screens/nav_wrapper.dart';
 import 'package:astrophotography_blog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -19,16 +19,16 @@ class _AuthGateState extends State<AuthGate> {
     // Listen to changes in auth state and rebuild the UI
     _authService.onAuthStateChange.listen((data) {
       if (mounted) {
-        setState(() {}); 
+        setState(() {});
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // If the user has a session, show the HomePage, else show the LoginScreen
+    // If the user has a session, show the main app shell, else show login.
     if (_authService.currentSession != null) {
-      return const HomePage();
+      return const NavWrapper();
     } else {
       return const LoginScreen();
     }

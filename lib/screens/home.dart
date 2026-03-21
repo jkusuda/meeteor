@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-
   Widget _buildChallengeCard(
     BuildContext context,
     IconData icon,
@@ -43,10 +42,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               description,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.thistle,
-              ),
+              style: TextStyle(fontSize: 11, color: AppColors.thistle),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -67,9 +63,7 @@ class HomePage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.spaceIndigo,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Column(
           children: [
             Icon(icon, size: 48, color: AppColors.honeyBronze),
@@ -160,7 +154,10 @@ class HomePage extends StatelessWidget {
                   backgroundColor: AppColors.vintageLavender,
                   child: Text(
                     post['username']![0].toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -215,14 +212,42 @@ class HomePage extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+                    padding: const EdgeInsets.only(
+                      left: 12,
+                      right: 12,
+                      bottom: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Camera: ${post['camera']}', style: TextStyle(color: AppColors.thistle, fontSize: 12)),
-                        Text('ISO: ${post['iso']}', style: TextStyle(color: AppColors.thistle, fontSize: 12)),
-                        Text('Aperture: ${post['aperture']}', style: TextStyle(color: AppColors.thistle, fontSize: 12)),
-                        Text('Exposure: ${post['exposure']}', style: TextStyle(color: AppColors.thistle, fontSize: 12)),
+                        Text(
+                          'Camera: ${post['camera']}',
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'ISO: ${post['iso']}',
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Aperture: ${post['aperture']}',
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Exposure: ${post['exposure']}',
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -238,24 +263,17 @@ class HomePage extends StatelessWidget {
   Widget _buildPostFeed() {
     if (posts.isEmpty) {
       return Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(height: 32),
-            Icon(
-              Icons.nightlight_round,
-              size: 48,
-              color: AppColors.honeyBronze,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'no new posts,\ncurrently mesmerized by the moon',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.thistle,
-              ),
-            ),
-          ],
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 32),
+          Icon(Icons.nightlight_round, size: 48, color: AppColors.honeyBronze),
+          const SizedBox(height: 16),
+          Text(
+            'no new posts,\ncurrently mesmerized by the moon',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: AppColors.thistle),
+          ),
+        ],
       );
     }
 
@@ -307,14 +325,19 @@ class HomePage extends StatelessWidget {
                           margin: const EdgeInsets.only(top: 14),
                           padding: const EdgeInsets.only(top: 16, bottom: 12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: AppColors.vintageLavender, width: 1.5),
+                            border: Border.all(
+                              color: AppColors.vintageLavender,
+                              width: 1.5,
+                            ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: SizedBox(
                             height: 150,
                             child: ListView(
                               scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
                               children: [
                                 _buildChallengeCard(
                                   context,
@@ -341,16 +364,37 @@ class HomePage extends StatelessWidget {
                         Positioned(
                           top: 0,
                           left: 16,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            color: AppColors.prussianBlue,
-                            child: Text(
-                              'Daily Challenges',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.thistle,
-                              ),
+                          child: IntrinsicWidth(
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  top: 14,
+                                  child: Container(
+                                    height: 2,
+                                    color: AppColors.prussianBlue,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  child: Text(
+                                    'Daily Challenges',
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.visible,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.thistle,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -362,12 +406,19 @@ class HomePage extends StatelessWidget {
                     Column(
                       children: [
                         const SizedBox(height: 32),
-                        Icon(Icons.nightlight_round, size: 48, color: AppColors.honeyBronze),
+                        Icon(
+                          Icons.nightlight_round,
+                          size: 48,
+                          color: AppColors.honeyBronze,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'no new posts,\ncurrently mesmerized by the moon',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: AppColors.thistle),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.thistle,
+                          ),
                         ),
                       ],
                     )

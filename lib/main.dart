@@ -1,8 +1,8 @@
-import 'package:astrophotography_blog/screens/nav_wrapper.dart';
-import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:astrophotography_blog/services/auth_gate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppColors {
   static const Color prussianBlue = Color(0xFF141C34);
@@ -12,7 +12,22 @@ class AppColors {
   static const Color honeyBronze = Color(0xFFFCB454);
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+  if (supabaseUrl == null ||
+      supabaseUrl.isEmpty ||
+      supabaseAnonKey == null ||
+      supabaseAnonKey.isEmpty) {
+    throw StateError('Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env file.');
+  }
+
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+
   runApp(const MyApp());
 }
 
@@ -37,8 +52,7 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppColors.thistle,
       ),
-      home: const NavWrapper(),
+      home: const AuthGate(),
     );
   }
 }
-
