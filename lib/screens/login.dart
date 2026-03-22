@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:astrophotography_blog/services/auth_service.dart';
+import 'package:astrophotography_blog/screens/auth_widgets.dart';
+import 'package:astrophotography_blog/screens/signup.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,22 +11,79 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _authService = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  bool _isSigningIn = false;
+  final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  // helper to catch errors without boilerplate
-  Future<void> _handleAuth(Future<void> Function() authAction) async {
+  Future<void> _handleSignIn() async {
+    if (_isSigningIn) {
+      return;
+    }
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password.')),
+      );
+      return;
+    }
+
+    if (!_emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Incorrect email format.')));
+      return;
+    }
+
+    setState(() {
+      _isSigningIn = true;
+    });
+
     try {
-      await authAction();
-      // AuthGate detects the login and switches out this screen for the HomePage.
+      final response = await _authService.signIn(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (response.session == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Login did not create a session. Check your email confirmation status.',
+            ),
+          ),
+        );
+      }
+      // On successful login with a valid session, AuthGate reacts to auth state
+      // changes and automatically routes to the main app.
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        setState(() {
+          _isSigningIn = false;
+        });
       }
     }
+  }
+
+  void _showNotImplementedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Google sign in is not configured yet.')),
+    );
   }
 
   @override
@@ -36,46 +95,58 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return AuthBackground(
+      child: SingleChildScrollView(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
+            const AuthBranding(),
+            const SizedBox(height: 58),
+            const AuthFieldLabel('Email'),
+            AuthTextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              hint: 'your@email.com',
+              icon: Icons.email_outlined,
+              textInputAction: TextInputAction.next,
             ),
-            const SizedBox(height: 16),
-            TextField(
+            const SizedBox(height: 18),
+            const AuthFieldLabel('Password'),
+            AuthTextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              hint: '••••••••',
+              icon: Icons.lock_outline,
               obscureText: true,
+              textInputAction: TextInputAction.done,
             ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _showNotImplementedMessage,
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(color: AuthColors.accent),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            AuthPrimaryButton(
+              label: _isSigningIn ? 'Logging In...' : 'Log In',
+              onPressed: _handleSignIn,
+            ),
+            const SizedBox(height: 26),
+            const AuthOrDivider(),
+            const SizedBox(height: 22),
+            AuthGoogleButton(onPressed: _showNotImplementedMessage),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _handleAuth(
-                    () => _authService.signIn(
-                      email: _emailController.text.trim(),
-                      password: _passwordController.text.trim(),
-                    ),
-                  ),
-                  child: const Text('Login'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _handleAuth(
-                    () => _authService.signUp(
-                      email: _emailController.text.trim(),
-                      password: _passwordController.text.trim(),
-                    ),
-                  ),
-                  child: const Text('Sign Up'),
-                ),
-              ],
+            AuthBottomLink(
+              leadingText: 'Don\'t have an account? ',
+              actionText: 'Sign up',
+              onTap: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const SignUpScreen()));
+              },
             ),
           ],
         ),
