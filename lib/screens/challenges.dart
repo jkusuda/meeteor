@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:astrophotography_blog/main.dart';
+import 'package:meeteor/main.dart';
 
 class ChallengesPage extends StatelessWidget {
   const ChallengesPage({super.key});
