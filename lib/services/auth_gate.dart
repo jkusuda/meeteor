@@ -1,6 +1,7 @@
-import 'package:astrophotography_blog/screens/login.dart';
-import 'package:astrophotography_blog/screens/nav_wrapper.dart';
-import 'package:astrophotography_blog/services/auth_service.dart';
+import 'dart:async';
+import 'package:meeteor/screens/login.dart';
+import 'package:meeteor/screens/nav_wrapper.dart';
+import 'package:meeteor/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class AuthGate extends StatefulWidget {
@@ -12,16 +13,23 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   final AuthService _authService = AuthService();
+  StreamSubscription? _authStateSubscription;
 
   @override
   void initState() {
     super.initState();
     // Listen to changes in auth state and rebuild the UI
-    _authService.onAuthStateChange.listen((data) {
+    _authStateSubscription = _authService.onAuthStateChange.listen((data) {
       if (mounted) {
         setState(() {});
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   @override

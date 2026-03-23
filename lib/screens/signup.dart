@@ -1,5 +1,5 @@
-import 'package:astrophotography_blog/screens/auth_widgets.dart';
-import 'package:astrophotography_blog/services/auth_service.dart';
+import 'package:meeteor/screens/auth_widgets.dart';
+import 'package:meeteor/services/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class SignUpScreen extends StatefulWidget {
