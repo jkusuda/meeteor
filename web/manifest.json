@@ -1,6 +1,6 @@
 {
-    "name": "astrophotography_blog",
-    "short_name": "astrophotography_blog",
+    "name": "meeteor",
+    "short_name": "meeteor",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

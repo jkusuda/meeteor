@@ -1,4 +1,4 @@
-package com.example.astrophotography_blog
+package com.example.meeteor
 
 import io.flutter.embedding.android.FlutterActivity
 

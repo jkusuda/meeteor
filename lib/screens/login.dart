@@ -80,6 +80,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      await _authService.signInWithGoogle();
+      // AuthGate listens to auth state and will automatically navigate
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
   void _showNotImplementedMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Google sign in is not configured yet.')),
@@ -137,7 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 26),
             const AuthOrDivider(),
             const SizedBox(height: 22),
-            AuthGoogleButton(onPressed: _showNotImplementedMessage),
+            AuthGoogleButton(
+              onPressed: _handleGoogleSignIn,
+            ),
             const SizedBox(height: 24),
             AuthBottomLink(
               leadingText: 'Don\'t have an account? ',
