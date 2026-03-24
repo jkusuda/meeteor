@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -16,6 +18,44 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     await _client.auth.signOut();
+  }
+
+  // Sign in with Google (web: OAuth redirect, mobile: native SDK)
+  Future<void> signInWithGoogle() async {
+    if (kIsWeb) {
+      // On web, use Supabase's OAuth redirect flow
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'http://localhost:8080',
+      );
+      return;
+    }
+
+    // Native mobile flow (iOS / Android)
+    const webClientId =
+        '360591984993-043n7rqkrml5delngap244h1co8eb16p.apps.googleusercontent.com';
+    const iosClientId =
+        '360591984993-8pgvn1g93hosvmj5n0srjcpqcpid11oq.apps.googleusercontent.com';
+
+    await GoogleSignIn.instance.initialize(
+      clientId: iosClientId,
+      serverClientId: webClientId,
+    );
+
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    // authenticate() throws GoogleSignInException on cancel/failure.
+
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
+
+    if (idToken == null) {
+      throw Exception('Google sign in failed: no ID token received.');
+    }
+
+    await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+    );
   }
 
   // Get current session synchronously
