@@ -18,22 +18,35 @@ class AuthBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AuthColors.pageBackground,
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          color: AuthColors.pageBackground,
-          image: DecorationImage(
-            image: AssetImage('assets/starry_sky_bg_1.png'),
-            fit: BoxFit.cover,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 1.0,
+              child: Image.asset(
+                'assets/starry_sky_bg_1.png',
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
-            child: child,
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: child,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -107,6 +120,7 @@ class AuthTextField extends StatelessWidget {
     required this.icon,
     this.obscureText = false,
     this.textInputAction,
+    this.onSubmitted,
     super.key,
   });
 
@@ -115,6 +129,7 @@ class AuthTextField extends StatelessWidget {
   final IconData icon;
   final bool obscureText;
   final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +138,7 @@ class AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       obscuringCharacter: '•',
       textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       textAlignVertical: TextAlignVertical.center,
       style: GoogleFonts.dmSans(
         color: Colors.white,

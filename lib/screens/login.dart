@@ -117,6 +117,12 @@ class _LoginScreenState extends State<LoginScreen> {
               icon: Icons.lock_outline,
               obscureText: true,
               textInputAction: TextInputAction.done,
+              onSubmitted: (_) {
+                if (_emailController.text.trim().isNotEmpty &&
+                    _passwordController.text.trim().isNotEmpty) {
+                  _handleSignIn();
+                }
+              },
             ),
             const SizedBox(height: 10),
             Align(

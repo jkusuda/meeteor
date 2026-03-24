@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:astrophotography_blog/main.dart';
-import 'package:astrophotography_blog/screens/login.dart';
+import 'package:astrophotography_blog/services/auth_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -19,11 +19,8 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                if (!context.mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+              onPressed: () async {
+                await AuthService().signOut();
               },
               child: const Text('Temporary Sign Out'),
             ),
