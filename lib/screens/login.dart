@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:astrophotography_blog/services/auth_service.dart';
-import 'package:astrophotography_blog/screens/auth_widgets.dart';
-import 'package:astrophotography_blog/screens/signup.dart';
+import 'package:meeteor/services/auth_service.dart';
+import 'package:meeteor/screens/auth_widgets.dart';
+import 'package:meeteor/screens/signup.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

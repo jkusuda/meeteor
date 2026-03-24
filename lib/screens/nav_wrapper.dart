@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:astrophotography_blog/main.dart';
-import 'package:astrophotography_blog/screens/home.dart';
-import 'package:astrophotography_blog/screens/explore.dart';
-import 'package:astrophotography_blog/screens/new_post.dart';
-import 'package:astrophotography_blog/screens/challenges.dart';
-import 'package:astrophotography_blog/screens/profile.dart';
+import 'package:meeteor/main.dart';
+import 'package:meeteor/screens/home.dart';
+import 'package:meeteor/screens/explore.dart';
+import 'package:meeteor/screens/new_post.dart';
+import 'package:meeteor/screens/challenges.dart';
+import 'package:meeteor/screens/profile.dart';
 
 class NavWrapper extends StatefulWidget {
   const NavWrapper({super.key});
@@ -15,13 +15,23 @@ class NavWrapper extends StatefulWidget {
 
 class _NavWrapperState extends State<NavWrapper> {
   int _currentIndex = 0;
+  bool _isDemoMode = true; // Default to demo mode for now
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    ExplorePage(),
-    NewPostPage(),
-    ChallengesPage(),
-    ProfilePage(),
+  void _toggleDemoMode() {
+    setState(() {
+      _isDemoMode = !_isDemoMode;
+    });
+  }
+
+  List<Widget> get _pages => [
+    HomePage(isDemoMode: _isDemoMode),
+    const ExplorePage(),
+    const NewPostPage(),
+    const ChallengesPage(),
+    ProfilePage(
+      isDemoMode: _isDemoMode,
+      onToggleDemo: _toggleDemoMode,
+    ),
   ];
 
   @override

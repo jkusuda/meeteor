@@ -1,105 +1,107 @@
 // home screen code
 import 'package:flutter/material.dart';
-import 'package:astrophotography_blog/services/auth_service.dart';
-import 'package:astrophotography_blog/main.dart';
+import 'package:meeteor/main.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-  Widget _buildChallengeCard(
-    BuildContext context,
-    IconData icon,
-    String name,
-    String description,
-  ) {
-    final cardWidth = (MediaQuery.of(context).size.width - 32 - 16 - 36) / 3;
-    return GestureDetector(
-      onTap: () => _showChallengeDialog(context, icon, name, description),
-      child: Container(
-        width: cardWidth,
-        margin: const EdgeInsets.symmetric(horizontal: 6.0),
-        decoration: BoxDecoration(
-          color: AppColors.vintageLavender.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white, width: 0.5),
-        ),
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 36, color: AppColors.honeyBronze),
-            const SizedBox(height: 8),
-            Text(
-              name,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: TextStyle(fontSize: 11, color: AppColors.thistle),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
+import 'package:meeteor/widgets/challenge_card.dart';
+import 'package:meeteor/widgets/post_card.dart';
+
+class HomePage extends StatefulWidget {
+  final bool isDemoMode;
+
+  const HomePage({super.key, this.isDemoMode = true});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _isLoading = false;
+  List<Map<String, dynamic>> _livePosts = [];
+  List<Map<String, dynamic>> _liveChallenges = [];
+  String? _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSupabaseData();
   }
 
-  void _showChallengeDialog(
-    BuildContext context,
-    IconData icon,
-    String name,
-    String description,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.spaceIndigo,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Column(
-          children: [
-            Icon(icon, size: 48, color: AppColors.honeyBronze),
-            const SizedBox(height: 8),
-            Text(
-              name,
-              style: const TextStyle(color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        content: Text(
-          description,
-          style: TextStyle(color: AppColors.thistle),
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.honeyBronze,
-                foregroundColor: AppColors.prussianBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Complete Now'),
-            ),
-          ),
-        ],
-      ),
-    );
+  @override
+  void didUpdateWidget(HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isDemoMode != oldWidget.isDemoMode && !widget.isDemoMode) {
+      _fetchSupabaseData();
+    }
   }
 
-  final List<Map<String, String>> posts = const [
+  Future<void> _fetchSupabaseData() async {
+    if (widget.isDemoMode) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+
+      final futures = <Future>[
+        Supabase.instance.client
+            .from('posts')
+            .select('*, users(username, avatar_id)')
+            .order('created_at', ascending: false),
+        Supabase.instance.client
+            .from('challenges')
+            .select()
+            .order('created_at', ascending: false),
+      ];
+
+      if (session != null) {
+        futures.add(
+          Supabase.instance.client
+              .from('users')
+              .select('username')
+              .eq('id', session.user.id)
+              .maybeSingle(),
+        );
+      }
+
+      final results = await Future.wait(futures);
+
+      _livePosts = List<Map<String, dynamic>>.from(results[0]);
+      _liveChallenges = List<Map<String, dynamic>>.from(results[1]);
+
+      if (session != null && results.length > 2) {
+        final userData = results[2];
+        if (userData != null) {
+          _username = userData['username'] as String?;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching data: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  final List<Map<String, dynamic>> demoChallenges = const [
+    {
+      'icon': 'star',
+      'title': 'First Light',
+      'description': 'Capture your first photo of the night sky',
+    },
+    {
+      'icon': 'camera',
+      'title': 'Long Exposure',
+      'description': 'Take a 30+ second exposure of the Milky Way',
+    },
+    {
+      'icon': 'moon',
+      'title': 'Lunar Detail',
+      'description': 'Photograph craters on the Moon\'s surface',
+    },
+  ];
+
+  final List<Map<String, dynamic>> posts = const [
     {
       'username': 'astro_jane',
       'caption': 'Orion Nebula on a clear winter night',
@@ -120,170 +122,10 @@ class HomePage extends StatelessWidget {
     },
   ];
 
-  Widget _buildActionButton(IconData icon) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white, width: 0.5),
-        ),
-        child: Icon(icon, color: Colors.white, size: 18),
-      ),
-    );
-  }
-
-  Widget _buildPostCard(Map<String, String> post) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.spaceIndigo,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.vintageLavender,
-                  child: Text(
-                    post['username']![0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '@${post['username']}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ClipRRect(
-            child: Image.network(
-              post['imageUrl']!,
-              width: double.infinity,
-              height: 250,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              children: [
-                _buildActionButton(Icons.favorite_border),
-                const SizedBox(width: 8),
-                _buildActionButton(Icons.ios_share),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12),
-            child: Text(
-              post['caption']!,
-              style: TextStyle(color: AppColors.thistle, fontSize: 14),
-            ),
-          ),
-          Theme(
-            data: ThemeData(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-              minTileHeight: 36,
-              title: Text(
-                'Camera Settings',
-                style: TextStyle(color: AppColors.honeyBronze, fontSize: 13),
-              ),
-              iconColor: AppColors.honeyBronze,
-              collapsedIconColor: AppColors.honeyBronze,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Camera: ${post['camera']}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          'ISO: ${post['iso']}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          'Aperture: ${post['aperture']}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          'Exposure: ${post['exposure']}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPostFeed() {
-    if (posts.isEmpty) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          const SizedBox(height: 32),
-          Icon(Icons.nightlight_round, size: 48, color: AppColors.honeyBronze),
-          const SizedBox(height: 16),
-          Text(
-            'no new posts,\ncurrently mesmerized by the moon',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: AppColors.thistle),
-          ),
-        ],
-      );
-    }
-
-    return ListView.builder(
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        return _buildPostCard(posts[index]);
-      },
-    );
-  }
+  List<Map<String, dynamic>> get _currentPosts =>
+      widget.isDemoMode ? posts : _livePosts;
+  List<Map<String, dynamic>> get _currentChallenges =>
+      widget.isDemoMode ? demoChallenges : _liveChallenges;
 
   @override
   Widget build(BuildContext context) {
@@ -308,7 +150,9 @@ class HomePage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 32.0, bottom: 16.0),
                     child: Text(
-                      'welcome back\nto the stars',
+                      widget.isDemoMode
+                          ? 'welcome back\nto the stars'
+                          : 'welcome back\n${_username ?? 'to the stars'}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.cedarvilleCursive(
                         fontSize: 28,
@@ -338,26 +182,26 @@ class HomePage extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8.0,
                               ),
-                              children: [
-                                _buildChallengeCard(
-                                  context,
-                                  Icons.star,
-                                  'First Light',
-                                  'Capture your first photo of the night sky',
-                                ),
-                                _buildChallengeCard(
-                                  context,
-                                  Icons.camera_alt,
-                                  'Long Exposure',
-                                  'Take a 30+ second exposure of the Milky Way',
-                                ),
-                                _buildChallengeCard(
-                                  context,
-                                  Icons.nightlight_round,
-                                  'Lunar Detail',
-                                  'Photograph craters on the Moon\'s surface',
-                                ),
-                              ],
+                              children: _currentChallenges.isEmpty
+                                  ? [
+                                      const Padding(
+                                        padding: EdgeInsets.all(16.0),
+                                        child: Center(
+                                          child: Text(
+                                            'No challenges yet!',
+                                            style: TextStyle(
+                                              color: Colors.white54,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ]
+                                  : _currentChallenges
+                                        .map(
+                                          (c) =>
+                                              ChallengeCard(challenge: c),
+                                        )
+                                        .toList(),
                             ),
                           ),
                         ),
@@ -402,7 +246,12 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  if (posts.isEmpty)
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(),
+                    )
+                  else if (_currentPosts.isEmpty)
                     Column(
                       children: [
                         const SizedBox(height: 32),
@@ -423,7 +272,7 @@ class HomePage extends StatelessWidget {
                       ],
                     )
                   else
-                    ...posts.map((post) => _buildPostCard(post)),
+                    ..._currentPosts.map((post) => PostCard(post: post)),
                 ],
               ),
             ),

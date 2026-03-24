@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:astrophotography_blog/main.dart';
-import 'package:astrophotography_blog/services/auth_service.dart';
+import 'package:meeteor/main.dart';
+import 'package:meeteor/services/auth_service.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final bool isDemoMode;
+  final VoidCallback? onToggleDemo;
+
+  const ProfilePage({
+    super.key,
+    this.isDemoMode = true,
+    this.onToggleDemo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +29,18 @@ class ProfilePage extends StatelessWidget {
               onPressed: () async {
                 await AuthService().signOut();
               },
-              child: const Text('Temporary Sign Out'),
+              child: const Text('Sign Out'),
             ),
+            const SizedBox(height: 16),
+            if (onToggleDemo != null)
+              ElevatedButton(
+                onPressed: onToggleDemo,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDemoMode ? AppColors.honeyBronze : AppColors.spaceIndigo,
+                  foregroundColor: isDemoMode ? AppColors.prussianBlue : Colors.white,
+                ),
+                child: Text(isDemoMode ? 'Using Demo Data - Switch Live' : 'Using Live Data - Switch Demo'),
+              ),
           ],
         ),
       ),
