@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
       final futures = <Future>[
         Supabase.instance.client
             .from('posts')
-            .select('*, users(username, avatar_id)')
+            .select('*, users(username, avatar_id), post_likes(user_id)')
             .order('created_at', ascending: false),
         Supabase.instance.client
             .from('challenges')

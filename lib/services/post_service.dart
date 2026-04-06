@@ -46,4 +46,53 @@ class PostService {
       if (camera?.isNotEmpty == true) 'camera': camera,
     });
   }
+
+  Future<void> toggleLike(String postId, bool isLiked) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('You must be logged in to like posts.');
+
+    if (isLiked) {
+      // Unlike
+      await _client.from('post_likes').delete().match(
+        {'post_id': postId, 'user_id': user.id},
+      );
+    } else {
+      // Like
+      await _client.from('post_likes').insert({
+        'post_id': postId,
+        'user_id': user.id,
+      });
+    }
+  }
+
+  Future<void> addComment(String postId, String content) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('You must be logged in to comment.');
+    if (content.trim().isEmpty) return;
+
+    await _client.from('comments').insert({
+      'post_id': postId,
+      'user_id': user.id,
+      'content': content.trim(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchComments(String postId) async {
+    final response = await _client
+        .from('comments')
+        .select('*, users(username, avatar_id)')
+        .eq('post_id', postId)
+        .order('created_at', ascending: true);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<Map<String, dynamic>> getPostById(String postId) async {
+    final response = await _client
+        .from('posts')
+        .select('*, users(username, avatar_id), post_likes(user_id)')
+        .eq('id', postId)
+        .single();
+    
+    return response;
+  }
 }

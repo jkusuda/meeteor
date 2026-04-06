@@ -10,6 +10,8 @@ import 'package:meeteor/screens/new_post.dart';
 import 'package:meeteor/screens/challenges.dart';
 import 'package:meeteor/widgets/app_shell.dart';
 
+import 'package:meeteor/screens/post_detail.dart';
+
 // Provides a listenable version of Supabase Auth state for go_router
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
@@ -60,6 +62,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/p/:id',
+      builder: (context, state) => PostDetailPage(postId: state.pathParameters['id']!),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
