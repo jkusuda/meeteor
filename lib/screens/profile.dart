@@ -5,6 +5,7 @@ import 'package:meeteor/main.dart';
 import 'package:meeteor/screens/settings.dart';
 import 'package:meeteor/widgets/profile_post_card.dart';
 import 'package:meeteor/services/user_service.dart';
+import 'package:meeteor/services/auth_service.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isDemoMode;
@@ -77,24 +78,110 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.prussianBlue,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Profile',
-              style: TextStyle(color: AppColors.thistle, fontSize: 24),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: AppColors.thistle),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(
+                    isDemoMode: widget.isDemoMode,
+                    onToggleDemo: widget.onToggleDemo,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: 1.0,
+              child: Image.asset(
+                'assets/starry_sky_bg_1.png',
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                await AuthService().signOut();
-              },
-              child: const Text('Sign Out'),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          ),
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.vintageLavender))
+                : Column(
+                    children: [
+                      // Profile Header
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            CircleAvatar(
+                              radius: 40,
+                              backgroundColor: AppColors.spaceIndigo,
+                              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                              child: _avatarUrl == null
+                                  ? const Icon(Icons.person, size: 40, color: AppColors.vintageLavender)
+                                  : null,
+                            ),
+                            const SizedBox(width: 20),
+                            
+                            // Username & Bio
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _displayUsername,
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _displayBio,
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.thistle,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // Grid of Posts
+                      Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: _demoPosts.length,
+                          itemBuilder: (context, index) {
+                            final post = _demoPosts[index];
+                            return ProfilePostCard(post: post);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
