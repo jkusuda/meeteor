@@ -66,12 +66,11 @@ class PostCard extends StatelessWidget {
             ),
           ),
           ClipRRect(
-            child: post['imageUrl'] != null
+            child: (post['imageUrl'] ?? post['image_url']) != null
                 ? Image.network(
-                    post['imageUrl'],
+                    post['imageUrl'] ?? post['image_url'],
                     width: double.infinity,
-                    height: 250,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                   )
                 : Container(
                     width: double.infinity,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:meeteor/services/auth_service.dart';
-import 'package:meeteor/screens/auth_widgets.dart';
+import 'package:meeteor/widgets/auth_widgets.dart';
 import 'package:meeteor/screens/signup.dart';
 
 class LoginScreen extends StatefulWidget {
