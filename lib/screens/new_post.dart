@@ -1,16 +1,300 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:meeteor/main.dart'; // AppColors
+import 'package:meeteor/services/post_service.dart';
+import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 
-class NewPostPage extends StatelessWidget {
+class NewPostPage extends StatefulWidget {
   const NewPostPage({super.key});
+
+  @override
+  State<NewPostPage> createState() => _NewPostPageState();
+}
+
+class _NewPostPageState extends State<NewPostPage> {
+  final _postService = PostService();
+  final _picker = ImagePicker();
+
+  XFile? _selectedImage;
+  Uint8List? _imageBytes;
+
+  final _captionController = TextEditingController();
+  final _isoController = TextEditingController();
+  final _apertureController = TextEditingController();
+  final _exposureController = TextEditingController();
+  final _cameraController = TextEditingController();
+
+  bool _isUploading = false;
+
+  @override
+  void dispose() {
+    _captionController.dispose();
+    _isoController.dispose();
+    _apertureController.dispose();
+    _exposureController.dispose();
+    _cameraController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        _selectedImage = pickedFile;
+        _imageBytes = bytes;
+      });
+    }
+  }
+
+  Future<void> _submitPost() async {
+    final caption = _captionController.text.trim();
+
+    if (_selectedImage == null || _imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an image first.')),
+      );
+      return;
+    }
+
+    if (caption.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('A caption is required.')));
+      return;
+    }
+
+    setState(() => _isUploading = true);
+
+    try {
+      // Real upload
+      // Get the extension from the file name, default to jpg
+      final extension = _selectedImage!.name
+          .split('.')
+          .last
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final cleanExt = extension.isNotEmpty ? extension : 'jpg';
+
+      await _postService.createPost(
+        imageFile: _selectedImage,
+        imageBytes: _imageBytes!,
+        extension: cleanExt,
+        caption: caption,
+        iso: _isoController.text.trim(),
+        aperture: _apertureController.text.trim(),
+        exposure: _exposureController.text.trim(),
+        camera: _cameraController.text.trim(),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post published successfully!')),
+      );
+
+      // Trigger a refresh on the home list globally
+      listRefreshNotifier.value++;
+
+      // Clear the form for the next time the user comes to this tab
+      setState(() {
+        _selectedImage = null;
+        _imageBytes = null;
+      });
+      _captionController.clear();
+      _isoController.clear();
+      _apertureController.clear();
+      _exposureController.clear();
+      _cameraController.clear();
+
+      // Redirect to home feed
+      context.go('/');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error uploading post: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    int maxLines = 1,
+    bool required = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: required ? '$label *' : label,
+          labelStyle: TextStyle(color: AppColors.thistle),
+          filled: true,
+          fillColor: AppColors.spaceIndigo,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.honeyBronze),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.prussianBlue,
       appBar: AppBar(
-        title: const Text('New Post'),
+        title: const Text(
+          'New Post',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: AppColors.spaceIndigo,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: const Center(
-        child: Text('New post form will go here'),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 250,
+                  decoration: BoxDecoration(
+                    color: AppColors.spaceIndigo,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: _selectedImage == null
+                          ? AppColors.honeyBronze.withOpacity(0.5)
+                          : Colors.transparent,
+                      width: 2,
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: _imageBytes != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.memory(
+                            _imageBytes!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_a_photo,
+                              size: 48,
+                              color: AppColors.honeyBronze,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Tap to select a photo',
+                              style: TextStyle(
+                                color: AppColors.thistle,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildTextField(
+                _captionController,
+                'Caption',
+                maxLines: 3,
+                required: true,
+              ),
+              const Divider(color: Colors.white24, height: 32),
+              Text(
+                'Camera Settings (Optional)',
+                style: TextStyle(
+                  color: AppColors.honeyBronze,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(_cameraController, 'Camera (e.g. Sony A7III)'),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(_isoController, 'ISO (e.g. 3200)'),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTextField(
+                      _apertureController,
+                      'Aperture (e.g. f/2.8)',
+                    ),
+                  ),
+                ],
+              ),
+              _buildTextField(_exposureController, 'Exposure (e.g. 15s)'),
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isUploading ? null : _submitPost,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.honeyBronze,
+                    foregroundColor: AppColors.prussianBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isUploading
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: AppColors.prussianBlue,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Publishing...',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Text(
+                          'Publish Post',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 60), // Extra space for navbar
+            ],
+          ),
+        ),
       ),
     );
   }

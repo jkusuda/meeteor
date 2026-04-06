@@ -1,4 +1,4 @@
-import 'package:meeteor/services/auth_gate.dart';
+import 'package:meeteor/core/app_router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         textTheme: GoogleFonts.dmSansTextTheme(),
@@ -52,7 +52,7 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: AppColors.thistle,
       ),
-      home: const AuthGate(),
+      routerConfig: appRouter,
     );
   }
 }

@@ -4,14 +4,13 @@ import 'package:meeteor/main.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 
 import 'package:meeteor/widgets/challenge_card.dart';
 import 'package:meeteor/widgets/post_card.dart';
 
 class HomePage extends StatefulWidget {
-  final bool isDemoMode;
-
-  const HomePage({super.key, this.isDemoMode = true});
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -27,19 +26,18 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _fetchSupabaseData();
+    listRefreshNotifier.addListener(_fetchSupabaseData);
   }
 
   @override
-  void didUpdateWidget(HomePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isDemoMode != oldWidget.isDemoMode && !widget.isDemoMode) {
-      _fetchSupabaseData();
-    }
+  void dispose() {
+    listRefreshNotifier.removeListener(_fetchSupabaseData);
+    super.dispose();
   }
 
-  Future<void> _fetchSupabaseData() async {
-    if (widget.isDemoMode) return;
 
+
+  Future<void> _fetchSupabaseData() async {
     setState(() => _isLoading = true);
     try {
       final session = Supabase.instance.client.auth.currentSession;
@@ -83,49 +81,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  final List<Map<String, dynamic>> demoChallenges = const [
-    {
-      'icon': 'star',
-      'title': 'First Light',
-      'description': 'Capture your first photo of the night sky',
-    },
-    {
-      'icon': 'camera',
-      'title': 'Long Exposure',
-      'description': 'Take a 30+ second exposure of the Milky Way',
-    },
-    {
-      'icon': 'moon',
-      'title': 'Lunar Detail',
-      'description': 'Photograph craters on the Moon\'s surface',
-    },
-  ];
 
-  final List<Map<String, dynamic>> posts = const [
-    {
-      'username': 'astro_jane',
-      'caption': 'Orion Nebula on a clear winter night',
-      'imageUrl': 'https://picsum.photos/seed/orion/800/600',
-      'iso': '3200',
-      'aperture': 'f/2.8',
-      'exposure': '30s',
-      'camera': 'Canon EOS Ra',
-    },
-    {
-      'username': 'stargazer_mike',
-      'caption': 'Milky Way rising over the desert',
-      'imageUrl': 'https://picsum.photos/seed/milkyway/800/600',
-      'iso': '6400',
-      'aperture': 'f/1.8',
-      'exposure': '20s',
-      'camera': 'Sony A7III',
-    },
-  ];
-
-  List<Map<String, dynamic>> get _currentPosts =>
-      widget.isDemoMode ? posts : _livePosts;
-  List<Map<String, dynamic>> get _currentChallenges =>
-      widget.isDemoMode ? demoChallenges : _liveChallenges;
 
   @override
   Widget build(BuildContext context) {
@@ -150,9 +106,7 @@ class _HomePageState extends State<HomePage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 32.0, bottom: 16.0),
                     child: Text(
-                      widget.isDemoMode
-                          ? 'welcome back\nto the stars'
-                          : 'welcome back\n${_username ?? 'to the stars'}',
+                      'welcome back\n${_username ?? 'to the stars'}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.cedarvilleCursive(
                         fontSize: 28,
@@ -182,7 +136,7 @@ class _HomePageState extends State<HomePage> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8.0,
                               ),
-                              children: _currentChallenges.isEmpty
+                              children: _liveChallenges.isEmpty
                                   ? [
                                       const Padding(
                                         padding: EdgeInsets.all(16.0),
@@ -196,7 +150,7 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                       ),
                                     ]
-                                  : _currentChallenges
+                                  : _liveChallenges
                                         .map(
                                           (c) =>
                                               ChallengeCard(challenge: c),
@@ -251,7 +205,7 @@ class _HomePageState extends State<HomePage> {
                       padding: EdgeInsets.all(32.0),
                       child: CircularProgressIndicator(),
                     )
-                  else if (_currentPosts.isEmpty)
+                  else if (_livePosts.isEmpty)
                     Column(
                       children: [
                         const SizedBox(height: 32),
@@ -272,7 +226,8 @@ class _HomePageState extends State<HomePage> {
                       ],
                     )
                   else
-                    ..._currentPosts.map((post) => PostCard(post: post)),
+                    ..._livePosts.map((post) => PostCard(post: post)),
+                  const SizedBox(height: 120), // Extra space for the bottom navbar
                 ],
               ),
             ),
