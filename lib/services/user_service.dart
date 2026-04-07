@@ -22,10 +22,7 @@ class UserService {
           'DEBUG: UserService creating default profile for ${session.user.id}',
         );
         final emailPrefix = session.user.email?.split('@').first ?? 'user';
-        final newRow = {
-          'id': session.user.id,
-          'username': emailPrefix,
-        };
+        final newRow = {'id': session.user.id, 'username': emailPrefix};
 
         await _client.from('users').upsert(newRow);
 
@@ -40,7 +37,7 @@ class UserService {
       return data;
     } catch (e) {
       debugPrint('DEBUG: UserService error: $e');
-      return null;
+      return {'username': 'ERR: $e'};
     }
   }
 

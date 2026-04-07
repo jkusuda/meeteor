@@ -6,7 +6,16 @@ import 'package:meeteor/services/auth_service.dart';
 import 'package:meeteor/services/user_service.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  final String? initialUsername;
+  final String? initialBio;
+  final String? initialAvatarId;
+
+  const SettingsPage({
+    super.key,
+    this.initialUsername,
+    this.initialBio,
+    this.initialAvatarId,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -16,10 +25,8 @@ class _SettingsPageState extends State<SettingsPage> {
   final _userService = UserService();
   String? _email;
   String? _username;
-  String? _displayName;
-  String? _avatarUrl;
+  String? _avatarId;
   String _bio = '';
-  bool _isSaving = false;
 
   final List<String> _spaceIcons = [
     '👨‍🚀',
@@ -39,6 +46,10 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    _username = widget.initialUsername;
+    _bio = widget.initialBio ?? '';
+    _avatarId = widget.initialAvatarId;
+    
     final session = Supabase.instance.client.auth.currentSession;
     _email = session?.user.email;
     _fetchProfile();
@@ -50,8 +61,7 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _username = data['username'] as String?;
         _bio = (data['bio'] as String?) ?? '';
-        _displayName = data['display_name'] as String?;
-        _avatarUrl = data['avatar_url'] as String?;
+        _avatarId = data['avatar_id'] as String?;
       });
     }
   }
@@ -59,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _showAvatarPicker() async {
     await showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
@@ -103,13 +114,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 itemCount: _spaceIcons.length,
                 itemBuilder: (context, index) {
                   final icon = _spaceIcons[index];
-                  final isSelected = _avatarUrl == icon;
+                  final isSelected = _avatarId == icon;
                   return GestureDetector(
                     onTap: () async {
                       Navigator.of(ctx).pop();
                       try {
-                        await _userService.updateProfile({'avatar_url': icon});
-                        if (mounted) setState(() => _avatarUrl = icon);
+                        await _userService.updateProfile({'avatar_id': icon});
+                        if (mounted) setState(() => _avatarId = icon);
                       } catch (e) {
                         debugPrint('Avatar update error: $e');
                       }
@@ -150,6 +161,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final controller = TextEditingController(text: initialValue);
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
@@ -394,26 +406,26 @@ class _SettingsPageState extends State<SettingsPage> {
                                       width: 2,
                                     ),
                                     image:
-                                        (_avatarUrl != null &&
-                                            _avatarUrl!.startsWith('http'))
+                                        (_avatarId != null &&
+                                            _avatarId!.startsWith('http'))
                                         ? DecorationImage(
-                                            image: NetworkImage(_avatarUrl!),
+                                            image: NetworkImage(_avatarId!),
                                             fit: BoxFit.cover,
                                           )
                                         : null,
                                   ),
                                   child:
-                                      (_avatarUrl == null ||
-                                          _avatarUrl!.isEmpty)
+                                      (_avatarId == null ||
+                                          _avatarId!.isEmpty)
                                       ? const Icon(
                                           Icons.person,
                                           size: 44,
                                           color: AppColors.thistle,
                                         )
-                                      : (!_avatarUrl!.startsWith('http'))
+                                      : (!_avatarId!.startsWith('http'))
                                       ? Center(
                                           child: Text(
-                                            _avatarUrl!,
+                                            _avatarId!,
                                             style: const TextStyle(
                                               fontSize: 44,
                                             ),
@@ -425,8 +437,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                   bottom: 0,
                                   right: 0,
                                   child: GestureDetector(
-                                    onTap:
-                                        _showAvatarPicker, // Fixed: Always editable
+                                    onTap: _showAvatarPicker,
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: const BoxDecoration(
@@ -454,13 +465,36 @@ class _SettingsPageState extends State<SettingsPage> {
                             icon: Icons.alternate_email,
                             label: 'Username',
                             value: '@${_username ?? 'username'}',
+                            onTap: () => _showEditDialog(
+                              title: 'Edit Username',
+                              initialValue: _username ?? '',
+                              hint: 'New username',
+                              maxLength: 30,
+                              onSave: (val) async {
+                                try {
+                                  await _userService.updateProfile({
+                                    'username': val,
+                                  });
+                                  if (mounted) {
+                                    setState(() => _username = val);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Username saved!'),
+                                        backgroundColor: AppColors.honeyBronze,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  debugPrint('Username error: $e');
+                                }
+                              },
+                            ),
                           ),
                           _settingsTile(
                             icon: Icons.info_outline,
                             label: 'Bio',
                             value: _bio.isEmpty ? 'Tap to add bio' : _bio,
                             onTap: () => _showEditDialog(
-                              // Fixed: Always editable
                               title: 'Edit Bio',
                               initialValue: _bio,
                               hint: 'About you...',
@@ -473,7 +507,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                   if (mounted) {
                                     setState(() => _bio = val);
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
+                                      const SnackBar(
                                         content: Text('Bio saved!'),
                                         backgroundColor: AppColors.honeyBronze,
                                       ),

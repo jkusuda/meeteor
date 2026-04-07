@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:meeteor/main.dart';
 import 'package:meeteor/services/post_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meeteor/core/app_router.dart';
 
 class PostCard extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -43,6 +44,7 @@ class _PostCardState extends State<PostCard> {
     });
     try {
       await _postService.toggleLike(widget.post['id'], originallyLiked);
+      listRefreshNotifier.value++;
     } catch (e) {
       setState(() {
         _isLiked = originallyLiked;
