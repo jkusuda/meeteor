@@ -12,7 +12,7 @@ class UserService {
       // 1. Try to fetch the existing profile
       var data = await _client
           .from('users')
-          .select('username, display_name, bio, avatar_url')
+          .select('username, bio, avatar_url')
           .eq('id', session.user.id)
           .maybeSingle();
 
@@ -23,7 +23,6 @@ class UserService {
         final newRow = {
           'id': session.user.id,
           'username': emailPrefix,
-          'display_name': emailPrefix,
         };
         
         await _client.from('users').upsert(newRow);
@@ -31,7 +30,7 @@ class UserService {
         // Fetch again to get the fresh record
         data = await _client
             .from('users')
-            .select('username, display_name, bio, avatar_url')
+            .select('username, bio, avatar_url')
             .eq('id', session.user.id)
             .single();
       }
@@ -39,7 +38,7 @@ class UserService {
       return data;
     } catch (e) {
       debugPrint('DEBUG: UserService error: $e');
-      return null;
+      return {'username': 'ERR: $e'};
     }
   }
 

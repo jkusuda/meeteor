@@ -6,6 +6,7 @@ import 'package:meeteor/screens/settings.dart';
 import 'package:meeteor/widgets/profile_post_card.dart';
 import 'package:meeteor/services/user_service.dart';
 import 'package:meeteor/services/auth_service.dart';
+import 'package:meeteor/core/app_router.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isDemoMode;
@@ -24,24 +25,24 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _userService = UserService();
   String? _username;
-  String? _displayName;
   String? _bio;
   String? _avatarUrl;
   bool _isLoading = false;
 
-  static const List<Map<String, dynamic>> _demoPosts = [
-    { 'imageUrl': 'https://picsum.photos/seed/nebula1/400/400', 'caption': 'Orion Nebula — 30s · f/2.8 · ISO 3200' },
-    { 'imageUrl': 'https://picsum.photos/seed/milky1/400/400', 'caption': 'Milky Way arch over the desert' },
-    { 'imageUrl': 'https://picsum.photos/seed/moon42/400/400', 'caption': 'Full moon craters in high detail' },
-    { 'imageUrl': 'https://picsum.photos/seed/andromeda7/400/400', 'caption': 'Andromeda galaxy widefield' },
-    { 'imageUrl': 'https://picsum.photos/seed/saturn9/400/400', 'caption': 'Saturn\'s rings through the eyepiece' },
-    { 'imageUrl': 'https://picsum.photos/seed/aurora3/400/400', 'caption': 'Aurora borealis from Iceland 🌌' },
-  ];
+  List<Map<String, dynamic>> _myPosts = [];
+  List<Map<String, dynamic>> _likedPosts = [];
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    listRefreshNotifier.addListener(_fetchProfile);
+  }
+
+  @override
+  void dispose() {
+    listRefreshNotifier.removeListener(_fetchProfile);
+    super.dispose();
   }
 
   @override
@@ -51,137 +52,214 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _fetchProfile() async {
-    setState(() => _isLoading = true);
-    final data = await _userService.getProfile();
-    
-    if (mounted && data != null) {
-      setState(() {
-        _username = data['username'] as String?;
-        _displayName = data['display_name'] as String?;
-        _bio = data['bio'] as String?;
-        _avatarUrl = data['avatar_url'] as String?;
-      });
+    if (_myPosts.isEmpty && _likedPosts.isEmpty) setState(() => _isLoading = true);
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        // Fetch using the standard syntax
+        final data = await Supabase.instance.client
+            .from('users')
+            .select()
+            .eq('id', session.user.id);
+            
+        final postsRes = await Supabase.instance.client
+            .from('posts')
+            .select()
+            .eq('user_id', session.user.id)
+            .order('created_at', ascending: false);
+
+        final likesRes = await Supabase.instance.client
+            .from('post_likes')
+            .select('posts(*)')
+            .eq('user_id', session.user.id)
+            .order('created_at', ascending: false);
+
+        if (mounted) {
+          setState(() {
+            if (data.isNotEmpty) {
+              final userProfile = data.first as Map<String, dynamic>;
+              _username = userProfile['username'] as String?;
+              _bio = userProfile['bio'] as String?;
+              _avatarUrl = userProfile['avatar_url'] as String?;
+            }
+            _myPosts = List<Map<String, dynamic>>.from(postsRes);
+            // Liked posts are nested inside 'posts'
+            _likedPosts = List<Map<String, dynamic>>.from(
+              likesRes.map((like) => like['posts']).where((p) => p != null)
+            );
+          });
+        }
+      } else if (widget.isDemoMode && mounted) {
+        setState(() {
+          _username = 'astrophotographer';
+          _bio = 'Capturing the cosmos ✨';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _username = 'ERR: $e';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    if (mounted) setState(() => _isLoading = false);
   }
 
-  // String get _displayUsername => (_displayName != null && _displayName!.isNotEmpty) ? _displayName! : (_username ?? '—');
-  String get _displayUsername {
-    if (_displayName != null && _displayName!.trim().isNotEmpty) {
-      return _displayName!;
-    }
-    return _username ?? '—'; // Fallback to username (or dash if both are null)
-  }
+  String get _displayUsername => _username ?? 'Guest';
   String get _displayBio => (_bio != null && _bio!.isNotEmpty) ? _bio! : 'Astrophotographer · meeteor member 🔭';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.prussianBlue,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: AppColors.thistle),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingsPage(
-                    isDemoMode: widget.isDemoMode,
-                    onToggleDemo: widget.onToggleDemo,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 1.0,
-              child: Image.asset(
-                'assets/starry_sky_bg_1.png',
-                fit: BoxFit.cover,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.prussianBlue,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 9.0, top: 9.0),
+              child: IconButton(
+                icon: const Icon(Icons.settings, color: AppColors.thistle),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SettingsPage(
+                        isDemoMode: widget.isDemoMode,
+                        onToggleDemo: widget.onToggleDemo,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          SafeArea(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.vintageLavender))
-                : Column(
-                    children: [
-                      // Profile Header
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-                        child: Row(
-                          children: [
-                            // Avatar
-                            CircleAvatar(
-                              radius: 40,
-                              backgroundColor: AppColors.spaceIndigo,
-                              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-                              child: _avatarUrl == null
-                                  ? const Icon(Icons.person, size: 40, color: AppColors.vintageLavender)
-                                  : null,
-                            ),
-                            const SizedBox(width: 20),
-                            
-                            // Username & Bio
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _displayUsername,
-                                    style: GoogleFonts.outfit(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _displayBio,
-                                    style: GoogleFonts.inter(
-                                      color: AppColors.thistle,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+          ],
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 1.0,
+                child: Image.asset(
+                  'assets/starry_sky_bg_1.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            SafeArea(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.vintageLavender))
+                  : Column(
+                      children: [
+                        // Profile Header
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(28.0, 16.0, 24.0, 16.0),
+                          child: Row(
+                            children: [
+                              // Avatar
+                              CircleAvatar(
+                                radius: 46,
+                                backgroundColor: AppColors.spaceIndigo,
+                                backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
+                                child: _avatarUrl == null
+                                    ? const Icon(Icons.person, size: 46, color: AppColors.vintageLavender)
+                                    : null,
                               ),
-                            ),
+                              const SizedBox(width: 24),
+                              
+                              // Username & Bio
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _displayUsername,
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _displayBio,
+                                      style: GoogleFonts.inter(
+                                        color: AppColors.thistle,
+                                        fontSize: 15,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 10),
+                        
+                        // Tabs
+                        const TabBar(
+                          indicatorColor: AppColors.vintageLavender,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.white54,
+                          tabs: [
+                            Tab(icon: Icon(Icons.grid_on)),
+                            Tab(icon: Icon(Icons.favorite)),
                           ],
                         ),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Grid of Posts
-                      Expanded(
-                        child: GridView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1,
+                        
+                        // TabBarView for Grids
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              // Tab 1: My Posts
+                              _myPosts.isEmpty
+                                  ? const Center(child: Text('No posts to display, create your first post today!', style: TextStyle(color: Colors.white54)))
+                                  : GridView.builder(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemCount: _myPosts.length,
+                                      itemBuilder: (context, index) {
+                                        final post = _myPosts[index];
+                                        return ProfilePostCard(post: post);
+                                      },
+                                    ),
+                              
+                              // Tab 2: Liked Posts
+                              _likedPosts.isEmpty
+                                  ? const Center(child: Text('No liked posts yet', style: TextStyle(color: Colors.white54)))
+                                  : GridView.builder(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemCount: _likedPosts.length,
+                                      itemBuilder: (context, index) {
+                                        final post = _likedPosts[index];
+                                        return ProfilePostCard(post: post);
+                                      },
+                                    ),
+                            ],
                           ),
-                          itemCount: _demoPosts.length,
-                          itemBuilder: (context, index) {
-                            final post = _demoPosts[index];
-                            return ProfilePostCard(post: post);
-                          },
                         ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
