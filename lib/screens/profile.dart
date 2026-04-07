@@ -7,7 +7,18 @@ import 'package:meeteor/widgets/profile_post_card.dart';
 import 'package:meeteor/core/app_router.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool isDemoMode;
+  final VoidCallback? onToggleDemo;
+  final bool adminViewEnabled;
+  final VoidCallback? onToggleAdminView;
+
+  const ProfilePage({
+    super.key,
+    this.isDemoMode = true,
+    this.onToggleDemo,
+    this.adminViewEnabled = false,
+    this.onToggleAdminView,
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -28,6 +39,8 @@ class _ProfilePageState extends State<ProfilePage> {
     _fetchProfile();
     listRefreshNotifier.addListener(_fetchProfile);
   }
+
+
 
   @override
   void dispose() {
@@ -113,6 +126,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         initialUsername: _username,
                         initialBio: _bio,
                         initialAvatarId: _avatarId,
+                        adminViewEnabled: widget.adminViewEnabled,
+                        onToggleAdminView: widget.onToggleAdminView,
                       ),
                     ),
                   ).then((_) => _fetchProfile());
@@ -233,9 +248,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     )
                                   : GridView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        2,
+                                        16,
+                                        88,
                                       ),
                                       gridDelegate:
                                           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -260,9 +277,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     )
                                   : GridView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        2,
+                                        16,
+                                        88,
                                       ),
                                       gridDelegate:
                                           const SliverGridDelegateWithFixedCrossAxisCount(

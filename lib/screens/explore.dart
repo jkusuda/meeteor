@@ -9,9 +9,14 @@ class ExplorePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.prussianBlue,
       body: Center(
-        child: Text(
-          'Explore',
-          style: TextStyle(color: AppColors.thistle, fontSize: 24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 88),
+          child: Center(
+            child: Text(
+              'Explore',
+              style: TextStyle(color: AppColors.thistle, fontSize: 24),
+            ),
+          ),
         ),
       ),
     );

@@ -85,6 +85,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   children: [
                     Expanded(
                       child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 80),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -165,6 +166,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                             Expanded(
                               child: TextField(
                                 controller: _commentController,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _submitComment(),
                                 style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(
                                   hintText: 'Write a comment...',

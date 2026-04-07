@@ -22,6 +22,20 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _liveChallenges = [];
   String? _username;
 
+  String _dateKey(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final month = normalized.month.toString().padLeft(2, '0');
+    final day = normalized.day.toString().padLeft(2, '0');
+    return '${normalized.year}-$month-$day';
+  }
+
+  List<Map<String, dynamic>> get _latestThreeChallenges {
+    if (_liveChallenges.length <= 3) {
+      return _liveChallenges;
+    }
+    return _liveChallenges.take(3).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -38,9 +52,10 @@ class _HomePageState extends State<HomePage> {
 
 
   Future<void> _fetchSupabaseData() async {
-    if (_livePosts.isEmpty) setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
     try {
       final session = Supabase.instance.client.auth.currentSession;
+      final todayKey = _dateKey(DateTime.now());
 
       final futures = <Future>[
         Supabase.instance.client
@@ -50,7 +65,9 @@ class _HomePageState extends State<HomePage> {
         Supabase.instance.client
             .from('challenges')
             .select()
-            .order('created_at', ascending: false),
+            .lte('activation_date', todayKey)
+            .order('activation_date', ascending: false)
+            .limit(3),
       ];
 
       if (session != null) {
@@ -66,7 +83,14 @@ class _HomePageState extends State<HomePage> {
       final results = await Future.wait(futures);
 
       _livePosts = List<Map<String, dynamic>>.from(results[0]);
-      _liveChallenges = List<Map<String, dynamic>>.from(results[1]);
+      _liveChallenges = List<Map<String, dynamic>>.from(results[1]).map((row) {
+        return {
+          'id': row['id'],
+          'title': row['title'],
+          'description': row['description'],
+          'icon': row['icon'] ?? row['icon_name'] ?? 'star',
+        };
+      }).toList();
 
       if (session != null && results.length > 2) {
         final userData = results[2];
@@ -101,6 +125,7 @@ class _HomePageState extends State<HomePage> {
           SafeArea(
             bottom: false,
             child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 88),
               child: Column(
                 children: [
                   Padding(
@@ -131,32 +156,27 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: SizedBox(
                             height: 150,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                              ),
-                              children: _liveChallenges.isEmpty
-                                  ? [
-                                      const Padding(
-                                        padding: EdgeInsets.all(16.0),
-                                        child: Center(
-                                          child: Text(
-                                            'No challenges yet!',
-                                            style: TextStyle(
-                                              color: Colors.white54,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ]
-                                  : _liveChallenges
+                            child: _latestThreeChallenges.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'No challenges yet!',
+                                      style: TextStyle(color: Colors.white54),
+                                    ),
+                                  )
+                                : ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
+                                    ),
+                                    children: _latestThreeChallenges
                                         .map(
-                                          (c) =>
-                                              ChallengeCard(challenge: c),
+                                          (challenge) => ChallengeCard(
+                                            challenge: challenge,
+                                            columns: 3,
+                                          ),
                                         )
                                         .toList(),
-                            ),
+                                  ),
                           ),
                         ),
                         Positioned(
@@ -227,7 +247,6 @@ class _HomePageState extends State<HomePage> {
                     )
                   else
                     ..._livePosts.map((post) => PostCard(post: post)),
-                  const SizedBox(height: 120), // Extra space for the bottom navbar
                 ],
               ),
             ),

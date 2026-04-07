@@ -9,6 +9,7 @@ import 'package:meeteor/screens/profile.dart';
 import 'package:meeteor/screens/new_post.dart';
 import 'package:meeteor/screens/challenges.dart';
 import 'package:meeteor/widgets/app_shell.dart';
+import 'package:meeteor/services/auth_service.dart';
 
 import 'package:meeteor/screens/post_detail.dart';
 
@@ -30,7 +31,7 @@ class GoRouterRefreshStream extends ChangeNotifier {
 }
 
 // Global navigator key and nested shell keys
-final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _homeTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'homeTab');
 final _exploreTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'exploreTab');
 final _postTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'postTab');
@@ -40,9 +41,56 @@ final _profileTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profileTa
 // Global trigger for refreshing lists (like posts after an upload)
 final ValueNotifier<int> listRefreshNotifier = ValueNotifier<int>(0);
 
+// Global admin-view toggle shared between profile and challenges tabs.
+final ValueNotifier<bool> adminViewEnabledNotifier = ValueNotifier<bool>(false);
+
+StreamSubscription<AuthState>? _adminViewSyncSubscription;
+
+Future<void> _syncAdminViewState({
+  int attempts = 4,
+  Duration delay = const Duration(milliseconds: 250),
+}) async {
+  final session = Supabase.instance.client.auth.currentSession;
+  if (session == null) {
+    adminViewEnabledNotifier.value = false;
+    return;
+  }
+
+  for (var attempt = 0; attempt <= attempts; attempt++) {
+    final hasAdminAccess = await AuthService().hasAdminAccess();
+    if (hasAdminAccess) {
+      adminViewEnabledNotifier.value = true;
+      return;
+    }
+
+    if (attempt < attempts) {
+      await Future.delayed(delay);
+    }
+  }
+
+  adminViewEnabledNotifier.value = false;
+}
+
+Future<void> initializeAppState() async {
+  await _syncAdminViewState();
+
+  _adminViewSyncSubscription ??=
+      Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+    if (event.session == null) {
+      adminViewEnabledNotifier.value = false;
+      return;
+    }
+
+    if (event.event == AuthChangeEvent.signedIn ||
+        event.event == AuthChangeEvent.initialSession) {
+      unawaited(_syncAdminViewState());
+    }
+  });
+}
+
 // GoRouter configuration
 final appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   refreshListenable: GoRouterRefreshStream(Supabase.instance.client.auth.onAuthStateChange),
   redirect: (BuildContext context, GoRouterState state) {
@@ -95,7 +143,12 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/post',
-              builder: (context, state) => const NewPostPage(),
+              builder: (context, state) => NewPostPage(
+                challengeId: state.uri.queryParameters['challengeId'],
+                challengeTitle: state.uri.queryParameters['challengeTitle'],
+                challengeDescription:
+                    state.uri.queryParameters['challengeDescription'],
+              ),
             ),
           ],
         ),
@@ -104,7 +157,13 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/challenges',
-              builder: (context, state) => const ChallengesPage(),
+              builder: (context, state) => ValueListenableBuilder<bool>(
+                valueListenable: adminViewEnabledNotifier,
+                builder: (context, adminViewEnabled, _) => ChallengesPage(
+                  key: ValueKey<bool>(adminViewEnabled),
+                  adminViewEnabled: adminViewEnabled,
+                ),
+              ),
             ),
           ],
         ),
@@ -113,7 +172,15 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/profile',
-              builder: (context, state) => const ProfilePage(),
+              builder: (context, state) => ValueListenableBuilder<bool>(
+                valueListenable: adminViewEnabledNotifier,
+                builder: (context, adminViewEnabled, _) => ProfilePage(
+                  adminViewEnabled: adminViewEnabled,
+                  onToggleAdminView: () {
+                    adminViewEnabledNotifier.value = !adminViewEnabledNotifier.value;
+                  },
+                ),
+              ),
             ),
           ],
         ),

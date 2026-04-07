@@ -4,17 +4,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meeteor/main.dart';
 import 'package:meeteor/services/auth_service.dart';
 import 'package:meeteor/services/user_service.dart';
+import 'package:meeteor/core/app_router.dart';
 
 class SettingsPage extends StatefulWidget {
   final String? initialUsername;
   final String? initialBio;
   final String? initialAvatarId;
+  final bool adminViewEnabled;
+  final VoidCallback? onToggleAdminView;
 
   const SettingsPage({
     super.key,
     this.initialUsername,
     this.initialBio,
     this.initialAvatarId,
+    this.adminViewEnabled = false,
+    this.onToggleAdminView,
   });
 
   @override
@@ -23,10 +28,12 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _userService = UserService();
+  final AuthService _authService = AuthService();
   String? _email;
   String? _username;
   String? _avatarId;
   String _bio = '';
+  bool _isAdminUser = false;
 
   final List<String> _spaceIcons = [
     '👨‍🚀',
@@ -52,7 +59,14 @@ class _SettingsPageState extends State<SettingsPage> {
     
     final session = Supabase.instance.client.auth.currentSession;
     _email = session?.user.email;
+    _loadAdminState();
     _fetchProfile();
+  }
+
+  Future<void> _loadAdminState() async {
+    final hasAccess = await _authService.hasAdminAccess();
+    if (!mounted) return;
+    setState(() => _isAdminUser = hasAccess);
   }
 
   Future<void> _fetchProfile() async {
@@ -524,6 +538,22 @@ class _SettingsPageState extends State<SettingsPage> {
                             label: 'Change Password',
                             onTap: () {},
                           ),
+                          if (_isAdminUser && widget.onToggleAdminView != null) ...[
+                            const SizedBox(height: 24),
+                            _sectionLabel('Admin Settings'),
+                            ValueListenableBuilder<bool>(
+                              valueListenable: adminViewEnabledNotifier,
+                              builder: (context, adminViewEnabled, _) => _settingsTile(
+                                icon: Icons.admin_panel_settings_rounded,
+                                label: adminViewEnabled
+                                    ? 'Switch to User View'
+                                    : 'Switch to Admin View',
+                                onTap: widget.onToggleAdminView,
+                                labelColor: AppColors.honeyBronze,
+                                iconColor: AppColors.honeyBronze,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 24),
                           _sectionLabel('Account Actions'),
                           _settingsTile(

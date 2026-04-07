@@ -67,6 +67,12 @@ flutter:
   assets:
     - .env
     - assets/starry_sky_bg_1.png
+    - assets/First Light.jpg
+    - assets/Long Exposure.jpg
+    - assets/Lunar Detail.jpg
+    - assets/Milky Way.jpg
+    - assets/Star Trails.jpg
+    - assets/Deep Sky Object.jpg
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

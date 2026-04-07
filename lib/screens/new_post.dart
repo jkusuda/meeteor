@@ -7,7 +7,16 @@ import 'package:meeteor/services/post_service.dart';
 import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 
 class NewPostPage extends StatefulWidget {
-  const NewPostPage({super.key});
+  final String? challengeId;
+  final String? challengeTitle;
+  final String? challengeDescription;
+
+  const NewPostPage({
+    super.key,
+    this.challengeId,
+    this.challengeTitle,
+    this.challengeDescription,
+  });
 
   @override
   State<NewPostPage> createState() => _NewPostPageState();
@@ -50,7 +59,7 @@ class _NewPostPageState extends State<NewPostPage> {
   }
 
   Future<void> _submitPost() async {
-    final caption = _captionController.text.trim();
+    final description = _captionController.text.trim();
 
     if (_selectedImage == null || _imageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,10 +68,10 @@ class _NewPostPageState extends State<NewPostPage> {
       return;
     }
 
-    if (caption.isEmpty) {
+    if (description.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('A caption is required.')));
+      ).showSnackBar(const SnackBar(content: Text('A description is required.')));
       return;
     }
 
@@ -82,7 +91,7 @@ class _NewPostPageState extends State<NewPostPage> {
         imageFile: _selectedImage,
         imageBytes: _imageBytes!,
         extension: cleanExt,
-        caption: caption,
+        caption: description,
         iso: _isoController.text.trim(),
         aperture: _apertureController.text.trim(),
         exposure: _exposureController.text.trim(),
@@ -91,7 +100,13 @@ class _NewPostPageState extends State<NewPostPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Post published successfully!')),
+        SnackBar(
+          content: Text(
+            widget.challengeTitle == null
+                ? 'Post published successfully!'
+                : 'Challenge submission published successfully!',
+          ),
+        ),
       );
 
       // Trigger a refresh on the home list globally
@@ -167,10 +182,55 @@ class _NewPostPageState extends State<NewPostPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.challengeTitle != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.spaceIndigo,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.honeyBronze.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Challenge Submission',
+                        style: TextStyle(
+                          color: AppColors.honeyBronze,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.challengeTitle!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (widget.challengeDescription != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.challengeDescription!,
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
               GestureDetector(
                 onTap: _pickImage,
                 child: Container(
@@ -180,7 +240,7 @@ class _NewPostPageState extends State<NewPostPage> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: _selectedImage == null
-                          ? AppColors.honeyBronze.withOpacity(0.5)
+                          ? AppColors.honeyBronze.withValues(alpha: 0.5)
                           : Colors.transparent,
                       width: 2,
                       style: BorderStyle.solid,
@@ -217,7 +277,7 @@ class _NewPostPageState extends State<NewPostPage> {
               const SizedBox(height: 24),
               _buildTextField(
                 _captionController,
-                'Caption',
+                'Description',
                 maxLines: 3,
                 required: true,
               ),
@@ -291,7 +351,6 @@ class _NewPostPageState extends State<NewPostPage> {
                         ),
                 ),
               ),
-              const SizedBox(height: 60), // Extra space for navbar
             ],
           ),
         ),

@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:meeteor/main.dart';
+import 'package:meeteor/screens/new_post.dart';
 
 class ChallengeCard extends StatelessWidget {
   final Map<String, dynamic> challenge;
+  final int columns;
 
-  const ChallengeCard({super.key, required this.challenge});
+  const ChallengeCard({
+    super.key,
+    required this.challenge,
+    this.columns = 3,
+  });
 
   IconData _getIconData(String? iconName) {
     switch (iconName) {
@@ -56,7 +62,16 @@ class ChallengeCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => NewPostPage(
+                      challengeTitle: name,
+                      challengeDescription: description,
+                    ),
+                  ),
+                );
+              },
               child: const Text('Complete Now'),
             ),
           ),
@@ -72,7 +87,8 @@ class ChallengeCard extends StatelessWidget {
     final description = challenge['description'] as String? ?? '';
     final icon = _getIconData(iconName);
 
-    final cardWidth = (MediaQuery.of(context).size.width - 32 - 16 - 36) / 3;
+    final cardWidth =
+      (MediaQuery.of(context).size.width - 32 - 16 - 36) / columns;
     return GestureDetector(
       onTap: () => _showChallengeDialog(context, icon, title, description),
       child: Container(

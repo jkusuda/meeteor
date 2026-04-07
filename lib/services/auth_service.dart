@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -45,7 +46,7 @@ class AuthService {
     final googleUser = await GoogleSignIn.instance.authenticate();
     // authenticate() throws GoogleSignInException on cancel/failure.
 
-    final googleAuth = await googleUser.authentication;
+    final googleAuth = googleUser.authentication;
     final idToken = googleAuth.idToken;
 
     if (idToken == null) {
@@ -60,6 +61,76 @@ class AuthService {
 
   // Get current session synchronously
   Session? get currentSession => _client.auth.currentSession;
+
+  // Get current user synchronously
+  User? get currentUser => _client.auth.currentUser;
+
+  bool get isAdmin {
+    final user = currentUser;
+    if (user == null) {
+      return false;
+    }
+
+    final metadata = <String, dynamic>{
+      ...user.appMetadata,
+      ...?user.userMetadata,
+    };
+
+    final role = metadata['role']?.toString().toLowerCase();
+    final isAdminFlag = metadata['is_admin'];
+
+    if (role == 'admin' ||
+        isAdminFlag == true ||
+        isAdminFlag?.toString().toLowerCase() == 'true') {
+      return true;
+    }
+
+    final adminEmails = dotenv.env['ADMIN_EMAILS'];
+    final email = user.email?.toLowerCase();
+
+    if (adminEmails == null || adminEmails.trim().isEmpty || email == null) {
+      return false;
+    }
+
+    final allowedEmails = adminEmails
+        .split(',')
+        .map((value) => value.trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toSet();
+
+    return allowedEmails.contains(email);
+  }
+
+  Future<bool> isAdminFromUsersTable() async {
+    final user = currentUser;
+    if (user == null) {
+      return false;
+    }
+
+    try {
+      final row = await _client
+          .from('users')
+          .select('admin')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (row == null) {
+        return false;
+      }
+
+      final adminValue = row['admin'];
+      return adminValue == true || adminValue?.toString().toLowerCase() == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> hasAdminAccess() async {
+    if (isAdmin) {
+      return true;
+    }
+    return isAdminFromUsersTable();
+  }
 
   // Listen to auth state changes (login, logout, token refresh)
   Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
