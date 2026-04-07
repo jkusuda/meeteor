@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:meeteor/main.dart';
 import 'package:meeteor/screens/home.dart';
@@ -5,6 +7,8 @@ import 'package:meeteor/screens/explore.dart';
 import 'package:meeteor/screens/new_post.dart';
 import 'package:meeteor/screens/challenges.dart';
 import 'package:meeteor/screens/profile.dart';
+import 'package:meeteor/services/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NavWrapper extends StatefulWidget {
   const NavWrapper({super.key});
@@ -14,8 +18,38 @@ class NavWrapper extends StatefulWidget {
 }
 
 class _NavWrapperState extends State<NavWrapper> {
+  final AuthService _authService = AuthService();
+  StreamSubscription<AuthState>? _authSubscription;
   int _currentIndex = 0;
   bool _isDemoMode = true; // Default to demo mode for now
+  bool _adminViewEnabled = false;
+  bool _isAdminUser = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshAdminAccess();
+    _authSubscription = _authService.onAuthStateChange.listen((_) {
+      _refreshAdminAccess();
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshAdminAccess() async {
+    final hasAccess = await _authService.hasAdminAccess();
+    if (!mounted) return;
+    setState(() {
+      _isAdminUser = hasAccess;
+      if (!_isAdminUser) {
+        _adminViewEnabled = false;
+      }
+    });
+  }
 
   void _toggleDemoMode() {
     setState(() {
@@ -23,14 +57,22 @@ class _NavWrapperState extends State<NavWrapper> {
     });
   }
 
+  void _toggleAdminView() {
+    setState(() {
+      _adminViewEnabled = !_adminViewEnabled;
+    });
+  }
+
   List<Widget> get _pages => [
-    HomePage(isDemoMode: _isDemoMode),
+    const HomePage(),
     const ExplorePage(),
     const NewPostPage(),
-    const ChallengesPage(),
+    ChallengesPage(key: ValueKey<bool>(_adminViewEnabled), adminViewEnabled: _adminViewEnabled),
     ProfilePage(
       isDemoMode: _isDemoMode,
       onToggleDemo: _toggleDemoMode,
+      adminViewEnabled: _adminViewEnabled,
+      onToggleAdminView: _isAdminUser ? _toggleAdminView : null,
     ),
   ];
 
