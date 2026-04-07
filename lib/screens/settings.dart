@@ -22,13 +22,13 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isSaving = false;
 
   final List<String> _spaceIcons = [
+    '👨‍🚀',
+    '👩‍🚀',
     '🪐',
     '🚀',
-    '👨‍🚀',
     '🛰️',
-    '🔭',
     '☄️',
-    '🌌',
+    '🌕',
     '✨',
     '🌙',
     '☀️',
