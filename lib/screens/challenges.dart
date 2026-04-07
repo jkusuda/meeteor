@@ -1009,7 +1009,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 80),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 88),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: constraints.maxHeight),
                     child: Column(

@@ -10,7 +10,7 @@ class ExplorePage extends StatelessWidget {
       backgroundColor: AppColors.prussianBlue,
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 80),
+          padding: const EdgeInsets.only(bottom: 88),
           child: Center(
             child: Text(
               'Explore',

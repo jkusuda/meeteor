@@ -43,7 +43,7 @@ class _PostCardState extends State<PostCard> {
       _isLiked = !_isLiked;
     });
     try {
-      await _postService.toggleLike(widget.post['id'], originallyLiked);
+      await _postService.toggleLike(widget.post['id']);
       listRefreshNotifier.value++;
     } catch (e) {
       setState(() {

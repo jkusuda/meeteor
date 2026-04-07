@@ -182,7 +182,7 @@ class _NewPostPageState extends State<NewPostPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

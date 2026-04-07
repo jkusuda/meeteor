@@ -248,9 +248,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     )
                                   : GridView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        2,
+                                        16,
+                                        88,
                                       ),
                                       gridDelegate:
                                           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -275,9 +277,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     )
                                   : GridView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        2,
+                                        16,
+                                        88,
                                       ),
                                       gridDelegate:
                                           const SliverGridDelegateWithFixedCrossAxisCount(

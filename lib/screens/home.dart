@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
 
 
   Future<void> _fetchSupabaseData() async {
-    if (_livePosts.isEmpty) setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
     try {
       final session = Supabase.instance.client.auth.currentSession;
       final todayKey = _dateKey(DateTime.now());
@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
           SafeArea(
             bottom: false,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 80),
+              padding: const EdgeInsets.only(bottom: 88),
               child: Column(
                 children: [
                   Padding(

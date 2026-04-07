@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PostService {
@@ -68,5 +69,40 @@ class PostService {
       'user_id': user.id,
       'content': content.trim(),
     });
+  }
+
+  Future<void> toggleLike(String postId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw StateError('No authenticated user.');
+    }
+
+    try {
+      // Check if already liked
+      final existing = await _client
+          .from('post_likes')
+          .select()
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (existing != null) {
+        // Unlike: delete the like
+        await _client
+            .from('post_likes')
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', user.id);
+      } else {
+        // Like: insert new like
+        await _client.from('post_likes').insert({
+          'post_id': postId,
+          'user_id': user.id,
+        });
+      }
+    } catch (e) {
+      debugPrint('Error toggling like: $e');
+      rethrow;
+    }
   }
 }
