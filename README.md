@@ -91,10 +91,10 @@ You should see checkmarks (✓) for:
 
 ```bash
 # Clone the repo
-git clone https://github.com/jkusuda/astrophotography-blog.git
+git clone https://github.com/jkusuda/meeteor.git
 
 # Navigate into project
-cd astrophotography-blog
+cd meeteor
 ```
 
 ### 2. Install Dependencies
@@ -135,7 +135,7 @@ Open your browser and navigate to `http://localhost:8080`.
 ## 📁 Project Structure
 
 ```text
-astrophotography-blog/
+meeteor/
 │
 ├── lib/                             # Main Flutter code folder
 │   │
