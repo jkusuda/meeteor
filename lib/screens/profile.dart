@@ -11,11 +11,7 @@ class ProfilePage extends StatefulWidget {
   final bool isDemoMode;
   final VoidCallback? onToggleDemo;
 
-  const ProfilePage({
-    super.key,
-    this.isDemoMode = true,
-    this.onToggleDemo,
-  });
+  const ProfilePage({super.key, this.isDemoMode = true, this.onToggleDemo});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -24,18 +20,36 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final _userService = UserService();
   String? _username;
-  String? _displayName;
+  String? _location;
   String? _bio;
-  String? _avatarUrl;
+  String? _avatarId;
   bool _isLoading = false;
 
   static const List<Map<String, dynamic>> _demoPosts = [
-    { 'imageUrl': 'https://picsum.photos/seed/nebula1/400/400', 'caption': 'Orion Nebula — 30s · f/2.8 · ISO 3200' },
-    { 'imageUrl': 'https://picsum.photos/seed/milky1/400/400', 'caption': 'Milky Way arch over the desert' },
-    { 'imageUrl': 'https://picsum.photos/seed/moon42/400/400', 'caption': 'Full moon craters in high detail' },
-    { 'imageUrl': 'https://picsum.photos/seed/andromeda7/400/400', 'caption': 'Andromeda galaxy widefield' },
-    { 'imageUrl': 'https://picsum.photos/seed/saturn9/400/400', 'caption': 'Saturn\'s rings through the eyepiece' },
-    { 'imageUrl': 'https://picsum.photos/seed/aurora3/400/400', 'caption': 'Aurora borealis from Iceland 🌌' },
+    {
+      'imageUrl': 'https://picsum.photos/seed/nebula1/400/400',
+      'caption': 'Orion Nebula — 30s · f/2.8 · ISO 3200',
+    },
+    {
+      'imageUrl': 'https://picsum.photos/seed/milky1/400/400',
+      'caption': 'Milky Way arch over the desert',
+    },
+    {
+      'imageUrl': 'https://picsum.photos/seed/moon42/400/400',
+      'caption': 'Full moon craters in high detail',
+    },
+    {
+      'imageUrl': 'https://picsum.photos/seed/andromeda7/400/400',
+      'caption': 'Andromeda galaxy widefield',
+    },
+    {
+      'imageUrl': 'https://picsum.photos/seed/saturn9/400/400',
+      'caption': 'Saturn\'s rings through the eyepiece',
+    },
+    {
+      'imageUrl': 'https://picsum.photos/seed/aurora3/400/400',
+      'caption': 'Aurora borealis from Iceland 🌌',
+    },
   ];
 
   @override
@@ -53,26 +67,27 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _fetchProfile() async {
     setState(() => _isLoading = true);
     final data = await _userService.getProfile();
-    
+
     if (mounted && data != null) {
       setState(() {
         _username = data['username'] as String?;
-        _displayName = data['display_name'] as String?;
+        _location = data['location'] as String?;
         _bio = data['bio'] as String?;
-        _avatarUrl = data['avatar_url'] as String?;
+        _avatarId = data['avatar_id'] as String?;
       });
     }
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // String get _displayUsername => (_displayName != null && _displayName!.isNotEmpty) ? _displayName! : (_username ?? '—');
-  String get _displayUsername {
-    if (_displayName != null && _displayName!.trim().isNotEmpty) {
-      return _displayName!;
-    }
-    return _username ?? '—'; // Fallback to username (or dash if both are null)
-  }
-  String get _displayBio => (_bio != null && _bio!.isNotEmpty) ? _bio! : 'Astrophotographer · meeteor member 🔭';
+  String get _displayUsername => _username ?? '—';
+
+  String get _displayBio => (_bio != null && _bio!.isNotEmpty)
+      ? _bio!
+      : 'Astrophotographer · meeteor member 🔭';
+      
+  String get _displayLocation => (_location != null && _location!.isNotEmpty) 
+      ? _location! 
+      : 'Earth';
 
   @override
   Widget build(BuildContext context) {
@@ -89,10 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SettingsPage(
-                    isDemoMode: widget.isDemoMode,
-                    onToggleDemo: widget.onToggleDemo,
-                  ),
+                  builder: (context) => const SettingsPage(),
                 ),
               );
             },
@@ -112,25 +124,40 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           SafeArea(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.vintageLavender))
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.vintageLavender,
+                    ),
+                  )
                 : Column(
                     children: [
                       // Profile Header
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0,
+                          vertical: 10.0,
+                        ),
                         child: Row(
                           children: [
                             // Avatar
                             CircleAvatar(
                               radius: 40,
                               backgroundColor: AppColors.spaceIndigo,
-                              backgroundImage: _avatarUrl != null ? NetworkImage(_avatarUrl!) : null,
-                              child: _avatarUrl == null
-                                  ? const Icon(Icons.person, size: 40, color: AppColors.vintageLavender)
+                              backgroundImage: (_avatarId != null && _avatarId!.startsWith('http'))
+                                  ? NetworkImage(_avatarId!)
                                   : null,
+                              child: (_avatarId == null || _avatarId!.isEmpty)
+                                  ? const Icon(
+                                      Icons.person,
+                                      size: 40,
+                                      color: AppColors.vintageLavender,
+                                    )
+                                  : (!_avatarId!.startsWith('http')) 
+                                      ? Text(_avatarId!, style: const TextStyle(fontSize: 40)) 
+                                      : null,
                             ),
                             const SizedBox(width: 20),
-                            
+
                             // Username & Bio
                             Expanded(
                               child: Column(
@@ -145,6 +172,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.location_on, size: 14, color: AppColors.vintageLavender),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _displayLocation,
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.vintageLavender,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   Text(
                                     _displayBio,
                                     style: GoogleFonts.inter(
@@ -158,19 +198,23 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 20),
-                      
+
                       // Grid of Posts
                       Expanded(
                         child: GridView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
                           ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
+                              ),
                           itemCount: _demoPosts.length,
                           itemBuilder: (context, index) {
                             final post = _demoPosts[index];
