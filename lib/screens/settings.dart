@@ -95,7 +95,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               Text(
-                'Select Your Space Icon',
+                'Select Your Avatar',
                 style: GoogleFonts.dmSans(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
