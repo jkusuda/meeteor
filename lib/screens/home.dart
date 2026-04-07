@@ -38,7 +38,7 @@ class _HomePageState extends State<HomePage> {
 
 
   Future<void> _fetchSupabaseData() async {
-    setState(() => _isLoading = true);
+    if (_livePosts.isEmpty) setState(() => _isLoading = true);
     try {
       final session = Supabase.instance.client.auth.currentSession;
 
