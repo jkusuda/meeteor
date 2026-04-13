@@ -41,6 +41,12 @@ final _profileTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profileTa
 // Global trigger for refreshing lists (like posts after an upload)
 final ValueNotifier<int> listRefreshNotifier = ValueNotifier<int>(0);
 
+// Global like-state cache shared between feed and detail pages.
+// Maps post ID -> liked boolean. Updated optimistically on toggle.
+final Map<String, bool> likeStateCache = {};
+// Notifies listeners whenever any like state changes.
+final ValueNotifier<int> likeStateNotifier = ValueNotifier<int>(0);
+
 // Global admin-view toggle shared between profile and challenges tabs.
 final ValueNotifier<bool> adminViewEnabledNotifier = ValueNotifier<bool>(false);
 
