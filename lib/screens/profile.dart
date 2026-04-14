@@ -38,13 +38,17 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     _fetchProfile();
     listRefreshNotifier.addListener(_fetchProfile);
+    likeStateNotifier.addListener(_onLikeStateChanged);
   }
 
-
+  void _onLikeStateChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
     listRefreshNotifier.removeListener(_fetchProfile);
+    likeStateNotifier.removeListener(_onLikeStateChanged);
     super.dispose();
   }
 
@@ -63,13 +67,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
         final postsRes = await Supabase.instance.client
             .from('posts')
-            .select()
+            .select('*, users(username, avatar_id), post_likes(user_id)')
             .eq('user_id', session.user.id)
             .order('created_at', ascending: false);
 
         final likesRes = await Supabase.instance.client
             .from('post_likes')
-            .select('posts(*)')
+            .select('posts(*, users(username, avatar_id), post_likes(user_id))')
             .eq('user_id', session.user.id)
             .order('created_at', ascending: false);
 
@@ -86,6 +90,13 @@ class _ProfilePageState extends State<ProfilePage> {
             _likedPosts = List<Map<String, dynamic>>.from(
               likesRes.map((like) => like['posts']).where((p) => p != null),
             );
+            // Seed like cache: all liked posts are liked by current user
+            for (final post in _likedPosts) {
+              final pid = post['id']?.toString();
+              if (pid != null && !likeStateCache.containsKey(pid)) {
+                likeStateCache[pid] = true;
+              }
+            }
           });
         }
       }
