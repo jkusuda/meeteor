@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -87,6 +89,7 @@ class ChallengesPage extends StatefulWidget {
 
 class _ChallengesPageState extends State<ChallengesPage> {
   final AuthService _authService = AuthService();
+  final ImagePicker _imagePicker = ImagePicker();
   late List<DailyChallenge> _challenges;
   late bool _canUseAdminView;
   late bool _adminViewEnabled;
@@ -963,6 +966,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
       ),
     );
     String selectedIcon = challenge?.iconName ?? 'star';
+    final initialImageUrl = challenge?.imageUrl ?? '';
+    XFile? selectedImage;
+    Uint8List? selectedImageBytes;
     final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
 
     // Image picker state
@@ -1694,6 +1700,12 @@ class _ChallengesPageState extends State<ChallengesPage> {
                                 color: AppColors.vintageLavender.withValues(
                                   alpha: 0.3,
                                 ),
+                                icon: _iconForName(entry.value.iconName),
+                                accent: _highlightForIndex(entry.key),
+                                onTap: () => _openChallengeDetails(entry.value),
+                                onEdit: _adminViewEnabled
+                                    ? () => _editChallenge(entry.value)
+                                    : null,
                               ),
                             ),
                             child: Text(
@@ -1836,6 +1848,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                  icon: _iconForName(entry.value.iconName),
+                                  accent: _highlightForIndex(entry.key),
+                                  onTap: () =>
+                                      _openChallengeDetails(entry.value),
+                                  onEdit: () => _editChallenge(entry.value),
                                 ),
                             ],
                           ),
