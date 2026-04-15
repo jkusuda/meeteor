@@ -198,6 +198,7 @@ class AuthPrimaryButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+          minimumSize: const Size.fromHeight(56),
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: GoogleFonts.dmSans(
             fontSize: 20,
@@ -260,7 +261,8 @@ class AuthGoogleButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          minimumSize: const Size.fromHeight(56),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: AuthColors.fieldFill,
         ),
       ),
