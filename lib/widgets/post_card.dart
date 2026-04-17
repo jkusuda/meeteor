@@ -48,7 +48,9 @@ class _PostCardState extends State<PostCard> {
 
     if (widget.post.containsKey('post_likes')) {
       final likes = widget.post['post_likes'] as List<dynamic>? ?? [];
-      likeStateCache[postId] = likes.any((like) => (like as Map)['user_id'] == user.id);
+      likeStateCache[postId] = likes.any(
+        (like) => (like as Map)['user_id'] == user.id,
+      );
     } else if (widget.post.containsKey('is_liked_by_user')) {
       likeStateCache[postId] = widget.post['is_liked_by_user'] == true;
     }
@@ -73,11 +75,12 @@ class _PostCardState extends State<PostCard> {
     final postId = widget.post['id'];
     // For Flutter web, we can construct the full URL. If origin is not available, we use current base.
     final origin = Uri.base.origin;
-    final url = '$origin/#/p/$postId'; // Often flutter web uses hash routing unless configured otherwise
+    final url =
+        '$origin/#/p/$postId'; // Often flutter web uses hash routing unless configured otherwise
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link copied to clipboard!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Link copied to clipboard!')));
   }
 
   void _goToComments() {
@@ -85,14 +88,17 @@ class _PostCardState extends State<PostCard> {
   }
 
   Widget _buildTagsRow(Map<String, dynamic> post) {
-    final tags = post['tags'] as List<dynamic>? ?? ['Example 1', 'Example 2'];
+    final tags = (post['tags'] as List<dynamic>? ?? const [])
+        .map((tag) => tag.toString().trim())
+        .where((tag) => tag.isNotEmpty)
+        .toList();
     if (tags.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
       child: Wrap(
         spacing: 6,
         runSpacing: 4,
-        children: tags.map((tag) => _buildTag(tag.toString())).toList(),
+        children: tags.map(_buildTag).toList(),
       ),
     );
   }
@@ -146,139 +152,148 @@ class _PostCardState extends State<PostCard> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.vintageLavender,
-                  child: Text(
-                    username.isNotEmpty ? username[0].toUpperCase() : '?',
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.vintageLavender,
+                    child: Text(
+                      username.isNotEmpty ? username[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '@$username',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '@$username',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ClipRRect(
-            child: (widget.post['imageUrl'] ?? widget.post['image_url']) != null
-                ? Image.network(
-                    widget.post['imageUrl'] ?? widget.post['image_url'],
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  )
-                : Container(
-                    width: double.infinity,
-                    height: 250,
-                    color: Colors.black45,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.white54,
-                      size: 50,
-                    ),
-                  ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  _buildActionButton(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    () { _toggleLike(); },
-                    color: _isLiked ? Colors.redAccent : null,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(Icons.chat_bubble_outline, _goToComments),
-                  const SizedBox(width: 8),
-                  _buildActionButton(Icons.ios_share, _sharePost),
                 ],
               ),
             ),
-          ),
-          _buildTagsRow(widget.post),
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12),
-            child: Text(
-              widget.post['caption'] ?? '',
-              style: TextStyle(color: AppColors.thistle, fontSize: 14),
-            ),
-          ),
-          Theme(
-            data: ThemeData(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-              minTileHeight: 36,
-              title: Text(
-                'Camera Settings',
-                style: TextStyle(color: AppColors.honeyBronze, fontSize: 13),
-              ),
-              iconColor: AppColors.honeyBronze,
-              collapsedIconColor: AppColors.honeyBronze,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
+            ClipRRect(
+              child:
+                  (widget.post['imageUrl'] ?? widget.post['image_url']) != null
+                  ? Image.network(
+                      widget.post['imageUrl'] ?? widget.post['image_url'],
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                    )
+                  : Container(
+                      width: double.infinity,
+                      height: 250,
+                      color: Colors.black45,
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.white54,
+                        size: 50,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Camera: ${widget.post['camera'] ?? '-'}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
+            ),
+            GestureDetector(
+              onTap: () {},
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    _buildActionButton(
+                      _isLiked ? Icons.favorite : Icons.favorite_border,
+                      () {
+                        _toggleLike();
+                      },
+                      color: _isLiked ? Colors.redAccent : null,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      Icons.chat_bubble_outline,
+                      _goToComments,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(Icons.ios_share, _sharePost),
+                  ],
+                ),
+              ),
+            ),
+            _buildTagsRow(widget.post),
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 12),
+              child: Text(
+                widget.post['caption'] ?? '',
+                style: TextStyle(color: AppColors.thistle, fontSize: 14),
+              ),
+            ),
+            Theme(
+              data: ThemeData(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                minTileHeight: 36,
+                title: Text(
+                  'Camera Settings',
+                  style: TextStyle(color: AppColors.honeyBronze, fontSize: 13),
+                ),
+                iconColor: AppColors.honeyBronze,
+                collapsedIconColor: AppColors.honeyBronze,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Camera: ${widget.post['camera'] ?? '-'}',
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'ISO: ${widget.post['iso'] ?? '-'}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
+                          Text(
+                            'ISO: ${widget.post['iso'] ?? '-'}',
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Aperture: ${widget.post['aperture'] ?? '-'}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
+                          Text(
+                            'Aperture: ${widget.post['aperture'] ?? '-'}',
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Exposure: ${widget.post['exposure'] ?? '-'}',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 12,
+                          Text(
+                            'Exposure: ${widget.post['exposure'] ?? '-'}',
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           ],
         ),
       ),

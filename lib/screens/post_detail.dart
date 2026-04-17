@@ -68,8 +68,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     if (_post!.containsKey('post_likes')) {
       final likes = _post!['post_likes'] as List<dynamic>? ?? [];
-      likeStateCache[widget.postId] =
-          likes.any((like) => (like as Map)['user_id'] == user.id);
+      likeStateCache[widget.postId] = likes.any(
+        (like) => (like as Map)['user_id'] == user.id,
+      );
     }
   }
 
@@ -92,9 +93,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final origin = Uri.base.origin;
     final url = '$origin/#/p/${_post!['id']}';
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link copied to clipboard!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Link copied to clipboard!')));
   }
 
   Future<void> _submitComment() async {
@@ -138,7 +139,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
               shape: BoxShape.circle,
               border: Border.all(color: AppColors.honeyBronze, width: 1.5),
             ),
-            child: Icon(Icons.arrow_back, color: AppColors.honeyBronze, size: 20),
+            child: Icon(
+              Icons.arrow_back,
+              color: AppColors.honeyBronze,
+              size: 20,
+            ),
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -146,16 +151,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _post == null
-              ? const Center(
-                  child: Text('Post not found',
-                      style: TextStyle(color: Colors.white)))
-              : _buildContent(),
+          ? const Center(
+              child: Text(
+                'Post not found',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          : _buildContent(),
     );
   }
 
   Widget _buildContent() {
     final postUser = _post!['users'] as Map<String, dynamic>?;
-    final username = postUser?['username'] as String? ??
+    final username =
+        postUser?['username'] as String? ??
         _post!['username'] as String? ??
         'unknown';
     final imageUrl = _post!['imageUrl'] ?? _post!['image_url'];
@@ -165,10 +174,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       children: [
         // Starry sky background
         Positioned.fill(
-          child: Image.asset(
-            'assets/starry_sky_bg_1.png',
-            fit: BoxFit.cover,
-          ),
+          child: Image.asset('assets/starry_sky_bg_1.png', fit: BoxFit.cover),
         ),
         // Main scrollable content
         Column(
@@ -185,7 +191,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     // User row
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -293,19 +301,31 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           const SizedBox(height: 6),
                           Text(
                             'Camera: ${_post!['camera'] ?? '-'}',
-                            style: TextStyle(color: AppColors.thistle, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 13,
+                            ),
                           ),
                           Text(
                             'ISO: ${_post!['iso'] ?? '-'}',
-                            style: TextStyle(color: AppColors.thistle, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 13,
+                            ),
                           ),
                           Text(
                             'Aperture: ${_post!['aperture'] ?? '-'}',
-                            style: TextStyle(color: AppColors.thistle, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 13,
+                            ),
                           ),
                           Text(
                             'Exposure: ${_post!['exposure'] ?? '-'}',
-                            style: TextStyle(color: AppColors.thistle, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.thistle,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
@@ -325,8 +345,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     if (_comments.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('No comments yet.',
-                            style: TextStyle(color: Colors.white54)),
+                        child: Text(
+                          'No comments yet.',
+                          style: TextStyle(color: Colors.white54),
+                        ),
                       )
                     else
                       ListView.builder(
@@ -342,7 +364,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               user?['username'] as String? ?? 'unknown';
                           return Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 6),
+                              horizontal: 16,
+                              vertical: 6,
+                            ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -354,7 +378,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                         ? commentUsername[0].toUpperCase()
                                         : '?',
                                     style: const TextStyle(
-                                        color: Colors.white, fontSize: 12),
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -375,7 +401,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                       Text(
                                         comment['content'] ?? '',
                                         style: const TextStyle(
-                                            color: Colors.white, fontSize: 14),
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -413,16 +441,22 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         hintStyle: const TextStyle(color: Colors.white54),
                         filled: false,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide(
-                              color: AppColors.vintageLavender, width: 0.5),
+                            color: AppColors.vintageLavender,
+                            width: 0.5,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide(
-                              color: AppColors.honeyBronze, width: 1),
+                            color: AppColors.honeyBronze,
+                            width: 1,
+                          ),
                         ),
                       ),
                     ),
@@ -442,14 +476,17 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   Widget _buildTagsRow(Map<String, dynamic> post) {
-    final tags = post['tags'] as List<dynamic>? ?? ['Example 1', 'Example 2'];
+    final tags = (post['tags'] as List<dynamic>? ?? const [])
+        .map((tag) => tag.toString().trim())
+        .where((tag) => tag.isNotEmpty)
+        .toList();
     if (tags.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
       child: Wrap(
         spacing: 6,
         runSpacing: 4,
-        children: tags.map((tag) => _buildTag(tag.toString())).toList(),
+        children: tags.map(_buildTag).toList(),
       ),
     );
   }

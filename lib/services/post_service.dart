@@ -11,6 +11,7 @@ class PostService {
     required Uint8List imageBytes,
     required String extension,
     required String caption,
+    String? challengeId,
     String? iso,
     String? aperture,
     String? exposure,
@@ -21,23 +22,38 @@ class PostService {
       throw StateError('No authenticated user.');
     }
 
-    final filePath = '${user.id}/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    final filePath =
+        '${user.id}/${DateTime.now().millisecondsSinceEpoch}.$extension';
 
     await _client.storage
         .from('posts')
-        .uploadBinary(filePath, imageBytes, fileOptions: const FileOptions(upsert: true));
+        .uploadBinary(
+          filePath,
+          imageBytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
 
     final imageUrl = _client.storage.from('posts').getPublicUrl(filePath);
 
     await _client.from('posts').insert({
       'user_id': user.id,
       'caption': caption,
-      'imageUrl': imageUrl,
+      'image_url': imageUrl,
       'iso': iso,
       'aperture': aperture,
       'exposure': exposure,
       'camera': camera,
     });
+
+    if (challengeId != null && challengeId.isNotEmpty) {
+      // Link challenge submissions using the existing join-table schema.
+      await _client.from('user_challenges').insert({
+        'user_id': user.id,
+        'challenge_id': challengeId,
+        'completed_at': DateTime.now().toIso8601String(),
+        'imageUrl': imageUrl,
+      });
+    }
   }
 
   Future<Map<String, dynamic>?> getPostById(String postId) async {

@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -90,6 +90,7 @@ class _NewPostPageState extends State<NewPostPage> {
         imageBytes: _imageBytes!,
         extension: cleanExt,
         caption: description,
+        challengeId: widget.challengeId,
         iso: _isoController.text.trim(),
         aperture: _apertureController.text.trim(),
         exposure: _exposureController.text.trim(),
@@ -167,33 +168,75 @@ class _NewPostPageState extends State<NewPostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: AppColors.prussianBlue,
+      appBar: widget.challengeTitle == null
+          ? null
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+              titleSpacing: 0,
+              leading: IconButton(
+                icon: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.honeyBronze,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back,
+                    color: AppColors.honeyBronze,
+                    size: 20,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              title: const Text(
+                'Make a Submission',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           // Starry sky background
           Positioned.fill(
-            child: Image.asset(
-              'assets/starry_sky_bg_1.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/starry_sky_bg_1.png', fit: BoxFit.cover),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                widget.challengeTitle == null ? 72 : 40,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Title matching Daily Challenges style
-                  const SizedBox(height: 8),
-                  Text(
-                    'New Post',
-                    style: TextStyle(
-                      color: AppColors.thistle,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                  if (widget.challengeTitle == null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'New Post',
+                      style: TextStyle(
+                        color: AppColors.thistle,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ] else
+                    const SizedBox(height: 6),
                   if (widget.challengeTitle != null) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -298,11 +341,17 @@ class _NewPostPageState extends State<NewPostPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildTextField(_cameraController, 'Camera (e.g. Sony A7III)'),
+                  _buildTextField(
+                    _cameraController,
+                    'Camera (e.g. Sony A7III)',
+                  ),
                   Row(
                     children: [
                       Expanded(
-                        child: _buildTextField(_isoController, 'ISO (e.g. 3200)'),
+                        child: _buildTextField(
+                          _isoController,
+                          'ISO (e.g. 3200)',
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -314,7 +363,7 @@ class _NewPostPageState extends State<NewPostPage> {
                     ],
                   ),
                   _buildTextField(_exposureController, 'Exposure (e.g. 15s)'),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 16),
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
