@@ -1,23 +1,32 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import 'package:meeteor/main.dart';
-import 'package:meeteor/screens/new_post.dart';
-import 'package:meeteor/core/app_router.dart';
+import 'package:meeteor/screens/all_past_challenges.dart';
+import 'package:meeteor/screens/all_upcoming_challenges.dart';
 import 'package:meeteor/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChallengeSubmission {
   final String username;
+  final String imageUrl;
   final String note;
   final String gear;
   final String timeAgo;
   final Color accentColor;
+  final DateTime? completedAt;
 
   const ChallengeSubmission({
     required this.username,
+    required this.imageUrl,
     required this.note,
     required this.gear,
     required this.timeAgo,
     required this.accentColor,
+    this.completedAt,
   });
 }
 
@@ -80,6 +89,7 @@ class ChallengesPage extends StatefulWidget {
 
 class _ChallengesPageState extends State<ChallengesPage> {
   final AuthService _authService = AuthService();
+  final ImagePicker _imagePicker = ImagePicker();
   late List<DailyChallenge> _challenges;
   late bool _canUseAdminView;
   late bool _adminViewEnabled;
@@ -118,13 +128,17 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 .select()
                 .order('created_at', ascending: false));
 
-      final mapped = List<Map<String, dynamic>>.from(rows)
-          .map(_challengeFromRow)
-          .toList();
+      final mapped = List<Map<String, dynamic>>.from(
+        rows,
+      ).map(_challengeFromRow).toList();
+
+      final enriched = await Future.wait(
+        mapped.map(_attachChallengeSubmissions),
+      );
 
       if (!mounted) return;
       setState(() {
-        _challenges = mapped;
+        _challenges = enriched;
       });
     } catch (e) {
       final errorText = e.toString();
@@ -159,7 +173,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
       title: (row['title'] ?? 'Challenge').toString(),
       description: (row['description'] ?? '').toString(),
       imageUrl: (row['imageURL'] ?? row['image_url'] ?? '').toString(),
-      activationDate: _parseActivationDate(row['activation_date']) ??
+      activationDate:
+          _parseActivationDate(row['activation_date']) ??
           _parseActivationDate(row['created_at']) ??
           DateTime.now(),
       iconName: (row['icon'] ?? row['icon_name'] ?? 'star').toString(),
@@ -167,6 +182,64 @@ class _ChallengesPageState extends State<ChallengesPage> {
       submissions: const [],
       isCompleted: false,
     );
+  }
+
+  Future<DailyChallenge> _attachChallengeSubmissions(
+    DailyChallenge challenge,
+  ) async {
+    try {
+      final rows = await Supabase.instance.client
+          .from('user_challenges')
+          .select(
+            'id, user_id, challenge_id, completed_at, imageUrl, users(username)',
+          )
+          .eq('challenge_id', challenge.id)
+          .order('completed_at', ascending: false);
+
+      final imageUrls = List<Map<String, dynamic>>.from(rows)
+          .map((row) => (row['imageUrl'] ?? '').toString())
+          .where((imageUrl) => imageUrl.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final postCaptionByImageUrl = <String, String>{};
+      if (imageUrls.isNotEmpty) {
+        final postRows = await Supabase.instance.client
+            .from('posts')
+            .select('image_url, caption')
+            .inFilter('image_url', imageUrls);
+
+        for (final postRow in List<Map<String, dynamic>>.from(postRows)) {
+          final imageUrl = (postRow['image_url'] ?? '').toString();
+          final caption = (postRow['caption'] ?? '').toString();
+          if (imageUrl.isNotEmpty) {
+            postCaptionByImageUrl[imageUrl] = caption;
+          }
+        }
+      }
+
+      final submissions = List<Map<String, dynamic>>.from(rows).map((row) {
+        final user = row['users'] as Map<String, dynamic>?;
+        final completedAt = _parseActivationDate(row['completed_at']);
+        final imageUrl = (row['imageUrl'] ?? '').toString();
+        return ChallengeSubmission(
+          username: (user?['username'] as String? ?? 'Anonymous').toString(),
+          imageUrl: imageUrl,
+          note: postCaptionByImageUrl[imageUrl]?.trim().isNotEmpty == true
+              ? postCaptionByImageUrl[imageUrl]!.trim()
+              : 'Challenge submission',
+          gear: 'Posted from Meeteor',
+          timeAgo: _submissionTimeLabel(completedAt),
+          accentColor: _highlightForIndex(row['id'].hashCode.abs()),
+          completedAt: completedAt,
+        );
+      }).toList();
+
+      return challenge.copyWith(submissions: submissions);
+    } catch (e) {
+      debugPrint('Error loading submissions for ${challenge.id}: $e');
+      return challenge;
+    }
   }
 
   DateTime? _parseActivationDate(dynamic raw) {
@@ -183,7 +256,11 @@ class _ChallengesPageState extends State<ChallengesPage> {
 
   String _relativeDateLabel(DateTime activationDate) {
     final today = DateTime.now();
-    final a = DateTime(activationDate.year, activationDate.month, activationDate.day);
+    final a = DateTime(
+      activationDate.year,
+      activationDate.month,
+      activationDate.day,
+    );
     final t = DateTime(today.year, today.month, today.day);
     final days = t.difference(a).inDays;
 
@@ -194,7 +271,29 @@ class _ChallengesPageState extends State<ChallengesPage> {
     return 'In ${-days} days';
   }
 
-  Future<bool> _hasChallengeOnDate({required DateTime activationDate, String? excludingId}) async {
+  String _submissionTimeLabel(DateTime? completedAt) {
+    if (completedAt == null) {
+      return 'Now';
+    }
+
+    final diff = DateTime.now().difference(completedAt);
+    if (diff.isNegative || diff.inMinutes < 60) {
+      return 'Now';
+    }
+
+    if (diff.inHours < 24) {
+      final hours = diff.inHours;
+      return hours == 1 ? '1 hour ago' : '$hours hours ago';
+    }
+
+    final days = diff.inDays;
+    return days == 1 ? '1 day ago' : '$days days ago';
+  }
+
+  Future<bool> _hasChallengeOnDate({
+    required DateTime activationDate,
+    String? excludingId,
+  }) async {
     if (!_supportsActivationDate) return false;
 
     final dateValue = _dateKey(activationDate);
@@ -237,18 +336,51 @@ class _ChallengesPageState extends State<ChallengesPage> {
     return null;
   }
 
-  List<DailyChallenge> get _pastChallenges =>
-      _challenges
-          .where((challenge) => _normalizeDate(challenge.activationDate).isBefore(_todayDate))
-          .toList();
+  List<DailyChallenge> get _pastChallenges {
+    final sevenDaysAgo = _todayDate.subtract(const Duration(days: 7));
+    return _challenges.where((challenge) {
+      final normalized = _normalizeDate(challenge.activationDate);
+      return normalized.isBefore(_todayDate) &&
+          (normalized.isAfter(sevenDaysAgo) ||
+              normalized.isAtSameMomentAs(sevenDaysAgo));
+    }).toList();
+  }
+
+  List<DailyChallenge> get _allPastChallenges => _challenges
+      .where(
+        (challenge) =>
+            _normalizeDate(challenge.activationDate).isBefore(_todayDate),
+      )
+      .toList();
+
+  bool get _hasMorePastChallenges =>
+      _allPastChallenges.length > _pastChallenges.length;
 
   List<DailyChallenge> get _futureChallenges {
+    final sevenDaysFromNow = _todayDate.add(const Duration(days: 7));
+    final future = _challenges.where((challenge) {
+      final normalized = _normalizeDate(challenge.activationDate);
+      return normalized.isAfter(_todayDate) &&
+          (normalized.isBefore(sevenDaysFromNow) ||
+              normalized.isAtSameMomentAs(sevenDaysFromNow));
+    }).toList();
+    future.sort((a, b) => a.activationDate.compareTo(b.activationDate));
+    return future;
+  }
+
+  List<DailyChallenge> get _allFutureChallenges {
     final future = _challenges
-        .where((challenge) => _normalizeDate(challenge.activationDate).isAfter(_todayDate))
+        .where(
+          (challenge) =>
+              _normalizeDate(challenge.activationDate).isAfter(_todayDate),
+        )
         .toList();
     future.sort((a, b) => a.activationDate.compareTo(b.activationDate));
     return future;
   }
+
+  bool get _hasMoreFutureChallenges =>
+      _allFutureChallenges.length > _futureChallenges.length;
 
   IconData _iconForName(String iconName) {
     switch (iconName) {
@@ -338,7 +470,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
                       Positioned(
                         left: 16,
                         top: 16,
-                        child: _Badge(label: _relativeDateLabel(challenge.activationDate)),
+                        child: _Badge(
+                          label: _relativeDateLabel(challenge.activationDate),
+                        ),
                       ),
                       Positioned(
                         right: 16,
@@ -383,7 +517,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
                           children: [
                             _InfoPill(
                               icon: Icons.schedule_rounded,
-                              label: _relativeDateLabel(challenge.activationDate),
+                              label: _relativeDateLabel(
+                                challenge.activationDate,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             _InfoPill(
@@ -458,16 +594,21 @@ class _ChallengesPageState extends State<ChallengesPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            if (challenge.submissions.isNotEmpty)
+                            if (challenge.submissions.length > 5)
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  _showAllSubmissionsSheet(challenge);
+                                },
                                 child: Text(
                                   'View All',
-                                  style: TextStyle(color: AppColors.honeyBronze),
+                                  style: TextStyle(
+                                    color: AppColors.honeyBronze,
+                                  ),
                                 ),
                               ),
                           ],
                         ),
+                        const SizedBox(height: 10),
                         if (challenge.submissions.isEmpty)
                           Container(
                             width: double.infinity,
@@ -484,86 +625,94 @@ class _ChallengesPageState extends State<ChallengesPage> {
                             ),
                           )
                         else
-                          ...challenge.submissions.map(
-                            (submission) => Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.spaceIndigo.withValues(
-                                  alpha: 0.72,
-                                ),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: submission.accentColor.withValues(
-                                    alpha: 0.22,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: submission.accentColor
-                                        .withValues(alpha: 0.2),
-                                    child: Icon(
-                                      Icons.person_rounded,
-                                      color: submission.accentColor,
-                                      size: 18,
+                          ...challenge.submissions
+                              .take(5)
+                              .map(
+                                (submission) => Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.spaceIndigo.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: submission.accentColor.withValues(
+                                        alpha: 0.22,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: SizedBox(
+                                          width: 72,
+                                          height: 72,
+                                          child: _buildChallengeImage(
+                                            imagePath: submission.imageUrl,
+                                            fit: BoxFit.cover,
+                                            fallbackBuilder: () => Container(
+                                              color: AppColors.prussianBlue,
+                                              alignment: Alignment.center,
+                                              child: Icon(
+                                                Icons.image_rounded,
+                                                color: submission.accentColor,
+                                                size: 28,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              submission.username,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                              ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  submission.username,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  submission.timeAgo,
+                                                  style: TextStyle(
+                                                    color: AppColors.thistle
+                                                        .withValues(alpha: 0.7),
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
+                                            const SizedBox(height: 4),
                                             Text(
-                                              submission.timeAgo,
+                                              submission.note,
                                               style: TextStyle(
-                                                color: AppColors.thistle
-                                                    .withValues(alpha: 0.7),
-                                                fontSize: 12,
+                                                color: AppColors.thistle,
+                                                height: 1.3,
                                               ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
+                                            const SizedBox(height: 6),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          submission.note,
-                                          style: TextStyle(
-                                            color: AppColors.thistle,
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          submission.gear,
-                                          style: TextStyle(
-                                            color: submission.accentColor,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
@@ -625,7 +774,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
                           ],
                         ),
                         SizedBox(
-                          height: MediaQuery.of(sheetContext).padding.bottom + 20,
+                          height:
+                              MediaQuery.of(sheetContext).padding.bottom + 20,
                         ),
                       ],
                     ),
@@ -639,16 +789,165 @@ class _ChallengesPageState extends State<ChallengesPage> {
     );
 
     if (shouldOpenSubmissionPage && mounted) {
-      rootNavigatorKey.currentState?.push(
-        MaterialPageRoute<void>(
-          builder: (pageContext) => NewPostPage(
-            challengeId: challenge.id,
-            challengeTitle: challenge.title,
-            challengeDescription: challenge.description,
-          ),
-        ),
+      context.push(
+        Uri(
+          path: '/post',
+          queryParameters: {
+            'challengeId': challenge.id,
+            'challengeTitle': challenge.title,
+            'challengeDescription': challenge.description,
+          },
+        ).toString(),
       );
     }
+  }
+
+  Future<void> _showAllSubmissionsSheet(DailyChallenge challenge) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.9,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.prussianBlue,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'All Community Submissions',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        CircleAvatar(
+                          backgroundColor: AppColors.prussianBlue.withValues(
+                            alpha: 0.75,
+                          ),
+                          child: IconButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close_rounded),
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      itemCount: challenge.submissions.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final submission = challenge.submissions[index];
+                        return _buildSubmissionTile(submission);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSubmissionTile(ChallengeSubmission submission) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.spaceIndigo.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: submission.accentColor.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: _buildChallengeImage(
+                imagePath: submission.imageUrl,
+                fit: BoxFit.cover,
+                fallbackBuilder: () => Container(
+                  color: AppColors.prussianBlue,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.image_rounded,
+                    color: submission.accentColor,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      submission.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      submission.timeAgo,
+                      style: TextStyle(
+                        color: AppColors.thistle.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  submission.note,
+                  style: TextStyle(color: AppColors.thistle, height: 1.3),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  submission.gear,
+                  style: TextStyle(
+                    color: submission.accentColor,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openChallengeEditor({DailyChallenge? challenge}) async {
@@ -656,9 +955,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
     final titleController = TextEditingController(text: challenge?.title ?? '');
     final descriptionController = TextEditingController(
       text: challenge?.description ?? '',
-    );
-    final imageController = TextEditingController(
-      text: challenge?.imageUrl ?? '',
     );
     final activationDateController = TextEditingController(
       text: _dateKey(challenge?.activationDate ?? DateTime.now()),
@@ -670,7 +966,15 @@ class _ChallengesPageState extends State<ChallengesPage> {
       ),
     );
     String selectedIcon = challenge?.iconName ?? 'star';
+    final initialImageUrl = challenge?.imageUrl ?? '';
+    XFile? selectedImage;
+    Uint8List? selectedImageBytes;
     final scaffoldMessenger = ScaffoldMessenger.of(parentContext);
+
+    // Image picker state
+    XFile? selectedImage;
+    Uint8List? selectedImageBytes;
+    final picker = ImagePicker();
 
     final message = await showDialog<String?>(
       context: parentContext,
@@ -693,6 +997,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: selectedIcon,
@@ -701,15 +1006,24 @@ class _ChallengesPageState extends State<ChallengesPage> {
                         items: const [
                           DropdownMenuItem(
                             value: 'star',
-                            child: Text('Star', style: TextStyle(color: Colors.white)),
+                            child: Text(
+                              'Star',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'camera',
-                            child: Text('Camera', style: TextStyle(color: Colors.white)),
+                            child: Text(
+                              'Camera',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'moon',
-                            child: Text('Moon', style: TextStyle(color: Colors.white)),
+                            child: Text(
+                              'Moon',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                         ],
                         onChanged: (value) {
@@ -732,25 +1046,84 @@ class _ChallengesPageState extends State<ChallengesPage> {
                         decoration: _editorInputDecoration('Description'),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: imageController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _editorInputDecoration('Image URL'),
+                      // Image picker UI
+                      GestureDetector(
+                        onTap: () async {
+                          final pickedFile = await picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (pickedFile != null) {
+                            final bytes = await pickedFile.readAsBytes();
+                            setDialogState(() {
+                              selectedImage = pickedFile;
+                              selectedImageBytes = bytes;
+                            });
+                          }
+                        },
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: AppColors.prussianBlue,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: selectedImage == null
+                                    ? AppColors.honeyBronze.withValues(
+                                        alpha: 0.5,
+                                      )
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: selectedImageBytes != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.memory(
+                                      selectedImageBytes!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add_a_photo,
+                                        size: 48,
+                                        color: AppColors.honeyBronze,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Tap to select an image',
+                                        style: TextStyle(
+                                          color: AppColors.thistle,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: activationDateController,
                         readOnly: true,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _editorInputDecoration('Activation Date').copyWith(
-                          suffixIcon: Icon(
-                            Icons.calendar_today_rounded,
-                            color: AppColors.thistle,
-                            size: 18,
-                          ),
-                        ),
+                        decoration: _editorInputDecoration('Activation Date')
+                            .copyWith(
+                              suffixIcon: Icon(
+                                Icons.calendar_today_rounded,
+                                color: AppColors.thistle,
+                                size: 18,
+                              ),
+                            ),
                         onTap: () async {
-                          final initial = DateTime.tryParse(activationDateController.text) ?? DateTime.now();
+                          final initial =
+                              DateTime.tryParse(
+                                activationDateController.text,
+                              ) ??
+                              DateTime.now();
                           final picked = await showDatePicker(
                             context: dialogContext,
                             initialDate: initial,
@@ -798,7 +1171,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
                       challenge: challenge,
                       title: title,
                       description: descriptionController.text.trim(),
-                      imageUrl: imageController.text.trim(),
+                      imageFile: selectedImage,
+                      imageBytes: selectedImageBytes,
                       activationDateRaw: activationDateController.text.trim(),
                       selectedIcon: selectedIcon,
                       tipControllers: tipControllers,
@@ -807,8 +1181,32 @@ class _ChallengesPageState extends State<ChallengesPage> {
                     if (result.$1) {
                       Navigator.of(dialogContext).pop(result.$2);
                     } else {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(content: Text(result.$2)),
+                      await showDialog<void>(
+                        context: dialogContext,
+                        builder: (errorDialogContext) => AlertDialog(
+                          backgroundColor: AppColors.spaceIndigo,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: const Text(
+                            'Cannot Create Challenge',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          content: Text(
+                            result.$2,
+                            style: TextStyle(color: AppColors.thistle),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(errorDialogContext).pop(),
+                              child: Text(
+                                'OK',
+                                style: TextStyle(color: AppColors.honeyBronze),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }
                   },
@@ -826,21 +1224,34 @@ class _ChallengesPageState extends State<ChallengesPage> {
     );
 
     if (message != null && mounted) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
-  Future<(bool, String)> _saveChallenge({required DailyChallenge? challenge, required String title, required String description, required String imageUrl, required String activationDateRaw, required String selectedIcon, required List<TextEditingController> tipControllers}) async {
-    final tips = tipControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
+  Future<(bool, String)> _saveChallenge({
+    required DailyChallenge? challenge,
+    required String title,
+    required String description,
+    required XFile? imageFile,
+    required Uint8List? imageBytes,
+    required String activationDateRaw,
+    required String selectedIcon,
+    required List<TextEditingController> tipControllers,
+  }) async {
+    final tips = tipControllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
     final activationDate = DateTime.tryParse(activationDateRaw);
-    
+
     if (title.isEmpty || description.isEmpty) {
       return (false, 'Title and description are required.');
     }
     if (activationDate == null) {
       return (false, 'Activation Date is required.');
+    }
+    if (imageFile == null || imageBytes == null) {
+      return (false, 'An image is required.');
     }
 
     if (_supportsActivationDate) {
@@ -853,18 +1264,47 @@ class _ChallengesPageState extends State<ChallengesPage> {
       }
     }
 
+    // Upload image to Supabase storage
+    String imageUrl =
+        'https://images.unsplash.com/photo-1464802686167-b939a6910659?auto=format&fit=crop&w=1200&q=80';
+    try {
+      final extension = imageFile.name
+          .split('.')
+          .last
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final cleanExt = extension.isNotEmpty ? extension : 'jpg';
+      final fileName =
+          'challenges/${DateTime.now().millisecondsSinceEpoch}.$cleanExt';
+
+      await Supabase.instance.client.storage
+          .from('challenges')
+          .uploadBinary(fileName, imageBytes);
+
+      imageUrl = Supabase.instance.client.storage
+          .from('challenges')
+          .getPublicUrl(fileName);
+    } catch (uploadError) {
+      debugPrint('Error uploading challenge image: $uploadError');
+      // Continue with default image URL if upload fails
+    }
+
     final chall = DailyChallenge(
       id: challenge?.id ?? '',
       title: title,
       description: description,
-      imageUrl: imageUrl.isEmpty ? 'https://images.unsplash.com/photo-1464802686167-b939a6910659?auto=format&fit=crop&w=1200&q=80' : imageUrl,
+      imageUrl: imageUrl,
       activationDate: activationDate,
       iconName: selectedIcon,
-      tips: tips.isEmpty ? const ['Add a few practical shooting tips so people know where to start.'] : tips,
+      tips: tips.isEmpty
+          ? const [
+              'Add a few practical shooting tips so people know where to start.',
+            ]
+          : tips,
       submissions: challenge?.submissions ?? const [],
       isCompleted: challenge?.isCompleted ?? false,
     );
-    
+
     try {
       final data = {
         'title': chall.title,
@@ -877,10 +1317,15 @@ class _ChallengesPageState extends State<ChallengesPage> {
       if (challenge == null) {
         await Supabase.instance.client.from('challenges').insert(data);
       } else {
-        await Supabase.instance.client.from('challenges').update(data).eq('id', challenge.id);
+        await Supabase.instance.client
+            .from('challenges')
+            .update(data)
+            .eq('id', challenge.id);
       }
       await _fetchChallenges();
-      final msg = challenge == null ? 'Daily challenge created.' : 'Daily challenge updated.';
+      final msg = challenge == null
+          ? 'Daily challenge created.'
+          : 'Daily challenge updated.';
       return (true, msg);
     } catch (e) {
       final errorText = e.toString();
@@ -903,13 +1348,20 @@ class _ChallengesPageState extends State<ChallengesPage> {
           if (challenge == null) {
             await Supabase.instance.client.from('challenges').insert(retryData);
           } else {
-            await Supabase.instance.client.from('challenges').update(retryData).eq('id', challenge.id);
+            await Supabase.instance.client
+                .from('challenges')
+                .update(retryData)
+                .eq('id', challenge.id);
           }
           await _fetchChallenges();
-          final msg = challenge == null ? 'Daily challenge created.' : 'Daily challenge updated.';
+          final msg = challenge == null
+              ? 'Daily challenge created.'
+              : 'Daily challenge updated.';
           return (true, msg);
         } catch (retryError) {
-          debugPrint('Challenge save retry error (activation_date): $retryError');
+          debugPrint(
+            'Challenge save retry error (activation_date): $retryError',
+          );
           return (false, 'Error saving challenge: $retryError');
         }
       }
@@ -1009,335 +1461,425 @@ class _ChallengesPageState extends State<ChallengesPage> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 88),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 72),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                  const SizedBox(height: 8),
-                  Text(
-                    'Daily Challenges',
-                    style: TextStyle(
-                      color: AppColors.thistle,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Complete challenges to earn trophies and gain experience capturing the cosmos.',
-                    style: TextStyle(
-                      color: AppColors.vintageLavender,
-                      fontSize: 15,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.spaceIndigo.withValues(alpha: 0.78),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: AppColors.vintageLavender.withValues(
-                          alpha: 0.35,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Daily Challenges',
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Trophy Collection',
+                        const SizedBox(height: 10),
+                        Text(
+                          'Complete challenges to earn trophies and gain experience capturing the cosmos.',
+                          style: TextStyle(
+                            color: AppColors.vintageLavender,
+                            fontSize: 15,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: AppColors.spaceIndigo.withValues(
+                              alpha: 0.78,
+                            ),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: AppColors.vintageLavender.withValues(
+                                alpha: 0.35,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Trophy Collection',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.emoji_events_rounded,
+                                    color: AppColors.honeyBronze,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '$trophiesEarned',
+                                    style: TextStyle(
+                                      color: AppColors.honeyBronze,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final availableWidth = constraints.maxWidth;
+                                  final trophySize =
+                                      ((availableWidth -
+                                                  ((_trophySlots - 1) * 8)) /
+                                              _trophySlots)
+                                          .clamp(32.0, 50.0);
+                                  final iconSize = trophySize * 0.6;
+
+                                  return Row(
+                                    children: List.generate(_trophySlots, (
+                                      index,
+                                    ) {
+                                      final earned = index < trophiesEarned;
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                          right: index < _trophySlots - 1
+                                              ? 8
+                                              : 0,
+                                        ),
+                                        child: Container(
+                                          width: trophySize,
+                                          height: trophySize,
+                                          decoration: BoxDecoration(
+                                            color: earned
+                                                ? AppColors.honeyBronze
+                                                      .withValues(alpha: 0.95)
+                                                : AppColors.spaceIndigo
+                                                      .withValues(alpha: 0.5),
+                                            borderRadius: BorderRadius.circular(
+                                              trophySize * 0.36,
+                                            ),
+                                            border: Border.all(
+                                              color: earned
+                                                  ? AppColors.honeyBronze
+                                                  : AppColors.vintageLavender
+                                                        .withValues(
+                                                          alpha: 0.28,
+                                                        ),
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.emoji_events_rounded,
+                                            size: iconSize,
+                                            color: earned
+                                                ? AppColors.prussianBlue
+                                                : AppColors.vintageLavender,
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Keep up with the daily challenges this week! $trophiesEarned/$_trophySlots trophies collected.',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.thistle,
+                                  fontSize: 13,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_adminViewEnabled) ...[
+                          const SizedBox(height: 18),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.honeyBronze.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.honeyBronze.withValues(
+                                  alpha: 0.25,
                                 ),
                               ),
                             ),
-                            Icon(
-                              Icons.emoji_events_rounded,
-                              color: AppColors.honeyBronze,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.admin_panel_settings_rounded,
+                                      color: AppColors.honeyBronze,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Text(
+                                      'Admin Challenge Tools',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Create a new challenge or edit the current prompt for today.',
+                                  style: TextStyle(
+                                    color: AppColors.thistle,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _openChallengeEditor(),
+                                    icon: const Icon(
+                                      Icons.add_circle_outline_rounded,
+                                    ),
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text('Create Challenge'),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.honeyBronze,
+                                      foregroundColor: AppColors.prussianBlue,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 6),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        Text(
+                          "Today's Challenge",
+                          style: TextStyle(
+                            color: AppColors.thistle,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_isLoadingChallenges)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (_challenges.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.spaceIndigo.withValues(
+                                alpha: 0.75,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.vintageLavender.withValues(
+                                  alpha: 0.3,
+                                ),
+                                icon: _iconForName(entry.value.iconName),
+                                accent: _highlightForIndex(entry.key),
+                                onTap: () => _openChallengeDetails(entry.value),
+                                onEdit: _adminViewEnabled
+                                    ? () => _editChallenge(entry.value)
+                                    : null,
+                              ),
+                            ),
+                            child: Text(
+                              'No daily challenges yet.',
+                              style: TextStyle(color: AppColors.thistle),
+                            ),
+                          )
+                        else if (_todayChallenge == null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.spaceIndigo.withValues(
+                                alpha: 0.75,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.vintageLavender.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'No challenge is scheduled for today.',
+                              style: TextStyle(color: AppColors.thistle),
+                            ),
+                          )
+                        else
+                          _TodayChallengeCard(
+                            challenge: _todayChallenge!,
+                            badgeLabel: _relativeDateLabel(
+                              _todayChallenge!.activationDate,
+                            ),
+                            icon: _iconForName(_todayChallenge!.iconName),
+                            onTap: () =>
+                                _openChallengeDetails(_todayChallenge!),
+                            onEdit: _adminViewEnabled
+                                ? () => _editChallenge(_todayChallenge!)
+                                : null,
+                          ),
+                        const SizedBox(height: 22),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Text(
-                              '$trophiesEarned',
+                              'Past Challenges',
                               style: TextStyle(
-                                color: AppColors.honeyBronze,
-                                fontSize: 18,
+                                color: AppColors.thistle,
+                                fontSize: 19,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: List.generate(_trophySlots, (index) {
-                            final earned = index < trophiesEarned;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Container(
-                                width: 39,
-                                height: 39,
-                                decoration: BoxDecoration(
-                                  color: earned
-                                      ? AppColors.honeyBronze.withValues(
-                                          alpha: 0.95,
-                                        )
-                                      : AppColors.spaceIndigo.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: earned
-                                        ? AppColors.honeyBronze
-                                        : AppColors.vintageLavender.withValues(
-                                            alpha: 0.28,
+                            if (_hasMorePastChallenges)
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AllPastChallengesPage(
+                                            challenges: _allPastChallenges,
+                                            onChallengeSelected:
+                                                _openChallengeDetails,
+                                            relativeDateLabel:
+                                                _relativeDateLabel,
+                                            iconForName: _iconForName,
                                           ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'View All',
+                                  style: TextStyle(
+                                    color: AppColors.honeyBronze,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.emoji_events_rounded,
-                                  color: earned
-                                      ? AppColors.prussianBlue
-                                      : AppColors.vintageLavender,
-                                ),
                               ),
-                            );
-                          }),
+                          ],
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          'Keep up with the daily challenges this week! $trophiesEarned/$_trophySlots trophies collected.',
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            fontSize: 13,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_adminViewEnabled) ...[
-                    const SizedBox(height: 18),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.honeyBronze.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.honeyBronze.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.admin_panel_settings_rounded,
-                                color: AppColors.honeyBronze,
+                        if (_pastChallenges.isEmpty)
+                          Text(
+                            'No past challenges to view.',
+                            style: TextStyle(color: AppColors.thistle),
+                          )
+                        else
+                          ..._pastChallenges.asMap().entries.map(
+                            (entry) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _PastChallengeCard(
+                                challenge: entry.value,
+                                dateLabel: _relativeDateLabel(
+                                  entry.value.activationDate,
+                                ),
+                                icon: _iconForName(entry.value.iconName),
+                                accent: _highlightForIndex(entry.key),
+                                onTap: () => _openChallengeDetails(entry.value),
+                                onEdit: _adminViewEnabled
+                                    ? () => _editChallenge(entry.value)
+                                    : null,
                               ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'Admin Challenge Tools',
+                            ),
+                          ),
+                        if (_adminViewEnabled) ...[
+                          const SizedBox(height: 22),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Future Challenges',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
+                                  color: AppColors.thistle,
+                                  fontSize: 19,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                              if (_hasMoreFutureChallenges)
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AllUpcomingChallengesPage(
+                                              challenges: _allFutureChallenges,
+                                              onChallengeSelected:
+                                                  _openChallengeDetails,
+                                              relativeDateLabel:
+                                                  _relativeDateLabel,
+                                              iconForName: _iconForName,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'View All',
+                                    style: TextStyle(
+                                      color: AppColors.honeyBronze,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  icon: _iconForName(entry.value.iconName),
+                                  accent: _highlightForIndex(entry.key),
+                                  onTap: () =>
+                                      _openChallengeDetails(entry.value),
+                                  onEdit: () => _editChallenge(entry.value),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            'Create a new challenge or edit the current prompt for today.',
-                            style: TextStyle(
-                              color: AppColors.thistle,
-                              height: 1.35,
+                          if (_futureChallenges.isEmpty)
+                            Text(
+                              'No upcoming challenges in the next 7 days.',
+                              style: TextStyle(color: AppColors.thistle),
+                            )
+                          else
+                            ..._futureChallenges.asMap().entries.map(
+                              (entry) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _PastChallengeCard(
+                                  challenge: entry.value,
+                                  dateLabel: _relativeDateLabel(
+                                    entry.value.activationDate,
+                                  ),
+                                  icon: _iconForName(entry.value.iconName),
+                                  accent: _highlightForIndex(entry.key),
+                                  onTap: () =>
+                                      _openChallengeDetails(entry.value),
+                                  onEdit: () => _editChallenge(entry.value),
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _openChallengeEditor(),
-                                  icon: const Icon(
-                                    Icons.add_circle_outline_rounded,
-                                  ),
-                                  label: const Text('Create Challenge'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.honeyBronze,
-                                    foregroundColor: AppColors.prussianBlue,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _challenges.isNotEmpty
-                                      ? () => _editChallenge(_todayChallenge ?? _challenges.first)
-                                      : null,
-                                  icon: const Icon(Icons.edit_rounded),
-                                  label: const Text(
-                                    'Edit Today',
-                                    style: TextStyle(fontWeight: FontWeight.w600),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    disabledForegroundColor: Colors.white70,
-                                    side: BorderSide(
-                                      color: AppColors.vintageLavender
-                                          .withValues(alpha: 0.55),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 22),
-                  Text(
-                    "Today's Challenge",
-                    style: TextStyle(
-                      color: AppColors.thistle,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_isLoadingChallenges)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_challenges.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.spaceIndigo.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.vintageLavender.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        'No daily challenges yet.',
-                        style: TextStyle(color: AppColors.thistle),
-                      ),
-                    )
-                  else if (_todayChallenge == null)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.spaceIndigo.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.vintageLavender.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        'No challenge is scheduled for today.',
-                        style: TextStyle(color: AppColors.thistle),
-                      ),
-                    )
-                  else
-                    _TodayChallengeCard(
-                      challenge: _todayChallenge!,
-                      badgeLabel: _relativeDateLabel(_todayChallenge!.activationDate),
-                      icon: _iconForName(_todayChallenge!.iconName),
-                      onTap: () => _openChallengeDetails(_todayChallenge!),
-                      onEdit: _adminViewEnabled
-                          ? () => _editChallenge(_todayChallenge!)
-                          : null,
-                    ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Past Challenges',
-                    style: TextStyle(
-                      color: AppColors.thistle,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_pastChallenges.isEmpty)
-                    Text(
-                      'No past challenges to view.',
-                      style: TextStyle(color: AppColors.thistle),
-                    )
-                  else
-                    ..._pastChallenges.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _PastChallengeCard(
-                          challenge: entry.value,
-                          dateLabel: _relativeDateLabel(entry.value.activationDate),
-                          icon: _iconForName(entry.value.iconName),
-                          accent: _highlightForIndex(entry.key),
-                          onTap: () => _openChallengeDetails(entry.value),
-                          onEdit: _adminViewEnabled
-                              ? () => _editChallenge(entry.value)
-                              : null,
-                        ),
-                      ),
-                    ),
-                  if (_adminViewEnabled) ...[
-                    const SizedBox(height: 22),
-                    Text(
-                      'Future Challenges',
-                      style: TextStyle(
-                        color: AppColors.thistle,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_futureChallenges.isEmpty)
-                      Text(
-                        'No future challenges scheduled.',
-                        style: TextStyle(color: AppColors.thistle),
-                      )
-                    else
-                      ..._futureChallenges.asMap().entries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _PastChallengeCard(
-                            challenge: entry.value,
-                            dateLabel: _relativeDateLabel(entry.value.activationDate),
-                            icon: _iconForName(entry.value.iconName),
-                            accent: _highlightForIndex(entry.key),
-                            onTap: () => _openChallengeDetails(entry.value),
-                            onEdit: () => _editChallenge(entry.value),
-                          ),
-                        ),
-                      ),
-                  ],
                       ],
                     ),
                   ),
@@ -1658,13 +2200,8 @@ class _PastChallengeCard extends StatelessWidget {
                 ),
               ),
               if (challenge.isCompleted)
-                Icon(
-                  Icons.check_circle_rounded,
-                  size: 18,
-                  color: accent,
-                ),
-              if (challenge.isCompleted)
-                const SizedBox(width: 8),
+                Icon(Icons.check_circle_rounded, size: 18, color: accent),
+              if (challenge.isCompleted) const SizedBox(width: 8),
               if (onEdit != null)
                 IconButton(
                   onPressed: onEdit,

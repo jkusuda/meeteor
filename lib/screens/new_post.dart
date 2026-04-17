@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -71,15 +71,13 @@ class _NewPostPageState extends State<NewPostPage> {
     if (description.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('A description is required.')));
+      ).showSnackBar(const SnackBar(content: Text('A comment is required.')));
       return;
     }
 
     setState(() => _isUploading = true);
 
     try {
-      // Real upload
-      // Get the extension from the file name, default to jpg
       final extension = _selectedImage!.name
           .split('.')
           .last
@@ -92,6 +90,7 @@ class _NewPostPageState extends State<NewPostPage> {
         imageBytes: _imageBytes!,
         extension: cleanExt,
         caption: description,
+        challengeId: widget.challengeId,
         iso: _isoController.text.trim(),
         aperture: _apertureController.text.trim(),
         exposure: _exposureController.text.trim(),
@@ -109,10 +108,8 @@ class _NewPostPageState extends State<NewPostPage> {
         ),
       );
 
-      // Trigger a refresh on the home list globally
       listRefreshNotifier.value++;
 
-      // Clear the form for the next time the user comes to this tab
       setState(() {
         _selectedImage = null;
         _imageBytes = null;
@@ -123,7 +120,6 @@ class _NewPostPageState extends State<NewPostPage> {
       _exposureController.clear();
       _cameraController.clear();
 
-      // Redirect to home feed
       context.go('/');
     } catch (e) {
       if (!mounted) return;
@@ -140,7 +136,7 @@ class _NewPostPageState extends State<NewPostPage> {
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
-    int maxLines = 1,
+    int? maxLines = 1,
     bool required = false,
   }) {
     return Padding(
@@ -149,6 +145,8 @@ class _NewPostPageState extends State<NewPostPage> {
         controller: controller,
         maxLines: maxLines,
         style: const TextStyle(color: Colors.white),
+        cursorColor: AppColors.honeyBronze,
+        showCursor: true,
         decoration: InputDecoration(
           labelText: required ? '$label *' : label,
           labelStyle: TextStyle(color: AppColors.thistle),
@@ -170,190 +168,250 @@ class _NewPostPageState extends State<NewPostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: AppColors.prussianBlue,
-      appBar: AppBar(
-        title: const Text(
-          'New Post',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.spaceIndigo,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.challengeTitle != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
+      appBar: widget.challengeTitle == null
+          ? null
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              automaticallyImplyLeading: false,
+              titleSpacing: 0,
+              leading: IconButton(
+                icon: Container(
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.spaceIndigo,
-                    borderRadius: BorderRadius.circular(16),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.honeyBronze.withValues(alpha: 0.25),
+                      color: AppColors.honeyBronze,
+                      width: 1.5,
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Challenge Submission',
-                        style: TextStyle(
-                          color: AppColors.honeyBronze,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.challengeTitle!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (widget.challengeDescription != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.challengeDescription!,
-                          style: TextStyle(
-                            color: AppColors.thistle,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ],
+                  child: Icon(
+                    Icons.arrow_back,
+                    color: AppColors.honeyBronze,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  height: 250,
-                  decoration: BoxDecoration(
-                    color: AppColors.spaceIndigo,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _selectedImage == null
-                          ? AppColors.honeyBronze.withValues(alpha: 0.5)
-                          : Colors.transparent,
-                      width: 2,
-                      style: BorderStyle.solid,
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              title: const Text(
+                'Make a Submission',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Starry sky background
+          Positioned.fill(
+            child: Image.asset('assets/starry_sky_bg_1.png', fit: BoxFit.cover),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                widget.challengeTitle == null ? 72 : 40,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.challengeTitle == null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'New Post',
+                      style: TextStyle(
+                        color: AppColors.thistle,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  child: _imageBytes != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.memory(
-                            _imageBytes!,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_a_photo,
-                              size: 48,
+                    const SizedBox(height: 20),
+                  ] else
+                    const SizedBox(height: 6),
+                  if (widget.challengeTitle != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.spaceIndigo,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.honeyBronze.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Challenge Submission',
+                            style: TextStyle(
                               color: AppColors.honeyBronze,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.challengeTitle!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (widget.challengeDescription != null) ...[
+                            const SizedBox(height: 8),
                             Text(
-                              'Tap to select a photo',
+                              widget.challengeDescription!,
                               style: TextStyle(
                                 color: AppColors.thistle,
-                                fontSize: 16,
+                                height: 1.35,
                               ),
                             ),
                           ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 250,
+                      decoration: BoxDecoration(
+                        color: AppColors.spaceIndigo,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _selectedImage == null
+                              ? AppColors.honeyBronze.withValues(alpha: 0.5)
+                              : Colors.transparent,
+                          width: 2,
+                          style: BorderStyle.solid,
                         ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildTextField(
-                _captionController,
-                'Description',
-                maxLines: 3,
-                required: true,
-              ),
-              const Divider(color: Colors.white24, height: 32),
-              Text(
-                'Camera Settings (Optional)',
-                style: TextStyle(
-                  color: AppColors.honeyBronze,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(_cameraController, 'Camera (e.g. Sony A7III)'),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(_isoController, 'ISO (e.g. 3200)'),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      _apertureController,
-                      'Aperture (e.g. f/2.8)',
-                    ),
-                  ),
-                ],
-              ),
-              _buildTextField(_exposureController, 'Exposure (e.g. 15s)'),
-              const SizedBox(height: 32),
-              SizedBox(
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isUploading ? null : _submitPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.honeyBronze,
-                    foregroundColor: AppColors.prussianBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isUploading
-                      ? const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: AppColors.prussianBlue,
-                                strokeWidth: 2.5,
+                      ),
+                      child: _imageBytes != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.memory(
+                                _imageBytes!,
+                                fit: BoxFit.contain,
                               ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_a_photo,
+                                  size: 48,
+                                  color: AppColors.honeyBronze,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Tap to select a photo',
+                                  style: TextStyle(
+                                    color: AppColors.thistle,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 12),
-                            Text(
-                              'Publishing...',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(
+                    _captionController,
+                    'Comment',
+                    maxLines: null,
+                    required: true,
+                  ),
+                  Text(
+                    'Camera Settings (Optional)',
+                    style: TextStyle(
+                      color: AppColors.honeyBronze,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    _cameraController,
+                    'Camera (e.g. Sony A7III)',
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          _isoController,
+                          'ISO (e.g. 3200)',
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          _apertureController,
+                          'Aperture (e.g. f/2.8)',
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildTextField(_exposureController, 'Exposure (e.g. 15s)'),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isUploading ? null : _submitPost,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.honeyBronze,
+                        foregroundColor: AppColors.prussianBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isUploading
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.prussianBlue,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Publishing...',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Text(
+                              'Publish Post',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                        )
-                      : const Text(
-                          'Publish Post',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
