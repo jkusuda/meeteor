@@ -45,7 +45,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _onLikeStateChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      _fetchProfile();
+    }
   }
 
   @override

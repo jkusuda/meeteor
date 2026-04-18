@@ -8,7 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExplorePage extends StatefulWidget {
   final String? initialQuery;
-  const ExplorePage({super.key, this.initialQuery});
+  final String? navigationId;
+  const ExplorePage({super.key, this.initialQuery, this.navigationId});
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -28,6 +29,16 @@ class _ExplorePageState extends State<ExplorePage> {
     }
     _fetchPosts();
     listRefreshNotifier.addListener(_onRefresh);
+  }
+
+  @override
+  void didUpdateWidget(ExplorePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Force re-apply filter if query changed OR if a new intentional navigation ID is provided
+    if (widget.initialQuery != oldWidget.initialQuery || 
+        (widget.navigationId != null && widget.navigationId != oldWidget.navigationId)) {
+      _applyFilter(widget.initialQuery ?? '');
+    }
   }
 
   @override
