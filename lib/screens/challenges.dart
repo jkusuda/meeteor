@@ -206,10 +206,10 @@ class _ChallengesPageState extends State<ChallengesPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 8),
-                        _buildHeader(),
-                        const SizedBox(height: 22),
-                        _buildTrophyCollection(),
+                        // const SizedBox(height: 8),
+                        // _buildHeader(),
+                        // const SizedBox(height: 22),
+                        // _buildTrophyCollection(),
                         if (_adminViewEnabled) ...[
                           const SizedBox(height: 18),
                           _buildAdminTools(),
@@ -253,23 +253,23 @@ class _ChallengesPageState extends State<ChallengesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Daily Challenges',
-          style: TextStyle(
-            color: AppColors.thistle,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Complete challenges to earn trophies and gain experience capturing the cosmos.',
-          style: TextStyle(
-            color: AppColors.vintageLavender,
-            fontSize: 15,
-            height: 1.35,
-          ),
-        ),
+        // Text(
+        //   'Daily Challenges',
+        //   style: TextStyle(
+        //     color: AppColors.thistle,
+        //     fontSize: 28,
+        //     fontWeight: FontWeight.w700,
+        //   ),
+        // ),
+        // const SizedBox(height: 10),
+        // Text(
+        //   'Complete challenges to earn trophies and gain experience capturing the cosmos.',
+        //   style: TextStyle(
+        //     color: AppColors.vintageLavender,
+        //     fontSize: 15,
+        //     height: 1.35,
+        //   ),
+        // ),
       ],
     );
   }
