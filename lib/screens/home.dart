@@ -6,7 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 
-import 'package:meeteor/widgets/challenge_card.dart';
+import 'package:meeteor/widgets/challenges/challenge_card.dart';
+import 'package:meeteor/core/challenge_models.dart';
 import 'package:meeteor/widgets/post_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -21,13 +22,6 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _livePosts = [];
   List<Map<String, dynamic>> _liveChallenges = [];
   String? _username;
-
-  String _dateKey(DateTime date) {
-    final normalized = DateTime(date.year, date.month, date.day);
-    final month = normalized.month.toString().padLeft(2, '0');
-    final day = normalized.day.toString().padLeft(2, '0');
-    return '${normalized.year}-$month-$day';
-  }
 
   List<Map<String, dynamic>> get _latestThreeChallenges {
     if (_liveChallenges.length <= 3) {
@@ -55,7 +49,7 @@ class _HomePageState extends State<HomePage> {
     setState(() => _isLoading = true);
     try {
       final session = Supabase.instance.client.auth.currentSession;
-      final todayKey = _dateKey(DateTime.now());
+      final todayKey = dateKey(DateTime.now());
 
       final futures = <Future>[
         Supabase.instance.client
