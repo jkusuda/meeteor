@@ -1,27 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:meeteor/main.dart';
-import 'package:meeteor/screens/challenges.dart';
+import 'package:meeteor/core/challenge_models.dart';
 
-class AllUpcomingChallengesPage extends StatefulWidget {
+class ChallengeListPage extends StatelessWidget {
+  final String title;
+  final String emptyMessage;
   final List<DailyChallenge> challenges;
   final Function(DailyChallenge) onChallengeSelected;
-  final Function(DateTime) relativeDateLabel;
-  final Function(String) iconForName;
 
-  const AllUpcomingChallengesPage({
+  const ChallengeListPage({
     super.key,
+    required this.title,
+    required this.emptyMessage,
     required this.challenges,
     required this.onChallengeSelected,
-    required this.relativeDateLabel,
-    required this.iconForName,
   });
 
-  @override
-  State<AllUpcomingChallengesPage> createState() =>
-      _AllUpcomingChallengesPageState();
-}
-
-class _AllUpcomingChallengesPageState extends State<AllUpcomingChallengesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,7 +42,7 @@ class _AllUpcomingChallengesPageState extends State<AllUpcomingChallengesPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Upcoming Challenges',
+          title,
           style: TextStyle(
             color: AppColors.thistle,
             fontSize: 24,
@@ -67,26 +61,26 @@ class _AllUpcomingChallengesPageState extends State<AllUpcomingChallengesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.challenges.isEmpty)
+                  if (challenges.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48.0),
                         child: Text(
-                          'No upcoming challenges scheduled.',
+                          emptyMessage,
                           style: TextStyle(color: AppColors.thistle),
                         ),
                       ),
                     )
                   else
-                    ...widget.challenges.map(
+                    ...challenges.map(
                       (challenge) => Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: _UpcomingChallengeCard(
+                        child: ChallengeImageCard(
                           challenge: challenge,
-                          dateLabel: widget.relativeDateLabel(
+                          dateLabel: relativeDateLabel(
                             challenge.activationDate,
                           ),
-                          onTap: () => widget.onChallengeSelected(challenge),
+                          onTap: () => onChallengeSelected(challenge),
                         ),
                       ),
                     ),
@@ -100,12 +94,13 @@ class _AllUpcomingChallengesPageState extends State<AllUpcomingChallengesPage> {
   }
 }
 
-class _UpcomingChallengeCard extends StatelessWidget {
+class ChallengeImageCard extends StatelessWidget {
   final DailyChallenge challenge;
   final String dateLabel;
   final VoidCallback onTap;
 
-  const _UpcomingChallengeCard({
+  const ChallengeImageCard({
+    super.key,
     required this.challenge,
     required this.dateLabel,
     required this.onTap,
@@ -121,43 +116,23 @@ class _UpcomingChallengeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Challenge image
             Stack(
               children: [
                 AspectRatio(
                   aspectRatio: 1.2,
-                  child: _buildChallengeImage(
-                    challenge.imageUrl,
-                    BoxFit.cover,
-                    challenge.iconName,
+                  child: buildChallengeImage(
+                    imagePath: challenge.imageUrl,
+                    fit: BoxFit.cover,
+                    iconName: challenge.iconName,
                   ),
                 ),
                 Positioned(
                   left: 12,
                   top: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.honeyBronze,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      dateLabel,
-                      style: TextStyle(
-                        color: AppColors.prussianBlue,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
+                  child: ChallengeBadge(label: dateLabel, fontSize: 12),
                 ),
               ],
             ),
-            // Challenge info
             Container(
               width: double.infinity,
               color: AppColors.spaceIndigo,
@@ -189,63 +164,5 @@ class _UpcomingChallengeCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _buildChallengeImage(String imagePath, BoxFit fit, String iconName) {
-    if (imagePath.isEmpty ||
-        imagePath ==
-            'https://images.unsplash.com/photo-1464802686167-b939a6910659?auto=format&fit=crop&w=1200&q=80') {
-      return Container(
-        color: AppColors.spaceIndigo,
-        alignment: Alignment.center,
-        child: Icon(
-          _iconForName(iconName),
-          size: 72,
-          color: AppColors.honeyBronze,
-        ),
-      );
-    }
-
-    if (imagePath.startsWith('assets/')) {
-      return Image.asset(
-        imagePath,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: AppColors.spaceIndigo,
-          alignment: Alignment.center,
-          child: Icon(
-            _iconForName(iconName),
-            size: 72,
-            color: AppColors.honeyBronze,
-          ),
-        ),
-      );
-    }
-
-    return Image.network(
-      imagePath,
-      fit: fit,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: AppColors.spaceIndigo,
-        alignment: Alignment.center,
-        child: Icon(
-          _iconForName(iconName),
-          size: 72,
-          color: AppColors.honeyBronze,
-        ),
-      ),
-    );
-  }
-
-  IconData _iconForName(String iconName) {
-    switch (iconName) {
-      case 'camera':
-        return Icons.camera_alt_rounded;
-      case 'moon':
-        return Icons.nightlight_round_rounded;
-      case 'star':
-      default:
-        return Icons.star_rounded;
-    }
   }
 }
