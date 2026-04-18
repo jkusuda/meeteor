@@ -141,13 +141,14 @@ class ExploreGridSkeleton extends StatelessWidget {
     return GridView.builder(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 88),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1,
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        return const ShimmerBox(width: double.infinity, height: double.infinity, borderRadius: 2);
+        return const ShimmerBox(width: double.infinity, height: double.infinity, borderRadius: 12);
       },
     );
   }
