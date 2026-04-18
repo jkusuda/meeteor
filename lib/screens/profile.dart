@@ -5,6 +5,7 @@ import 'package:meeteor/main.dart';
 import 'package:meeteor/screens/settings.dart';
 import 'package:meeteor/widgets/profile_post_card.dart';
 import 'package:meeteor/core/app_router.dart';
+import 'package:meeteor/widgets/shimmer_loading.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool isDemoMode;
@@ -28,7 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _username;
   String? _bio;
   String? _avatarId;
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   List<Map<String, dynamic>> _myPosts = [];
   List<Map<String, dynamic>> _likedPosts = [];
@@ -160,11 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             SafeArea(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.vintageLavender,
-                      ),
-                    )
+                  ? const ProfileSkeleton()
                   : Column(
                       children: [
                         // Profile Header

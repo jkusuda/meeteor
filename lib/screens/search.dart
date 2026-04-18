@@ -6,12 +6,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class RecentSearch {
   final String query;
   final bool isProfile;
+  final bool isTag;
   final String? username;
   final String? avatarInitial;
 
   const RecentSearch({
     required this.query,
     this.isProfile = false,
+    this.isTag = false,
     this.username,
     this.avatarInitial,
   });
@@ -35,6 +37,7 @@ class _SearchPageState extends State<SearchPage> {
   final FocusNode _searchFocusNode = FocusNode();
 
   List<Map<String, dynamic>> _userResults = [];
+  List<Map<String, dynamic>> _tagResults = [];
   bool _isSearching = false;
 
   @override
@@ -59,29 +62,42 @@ class _SearchPageState extends State<SearchPage> {
     if (query.isEmpty) {
       setState(() {
         _userResults = [];
+        _tagResults = [];
         _isSearching = false;
       });
       return;
     }
-    _searchUsers(query);
+    _searchUsersAndTags(query);
   }
 
-  Future<void> _searchUsers(String query) async {
+  Future<void> _searchUsersAndTags(String query) async {
     setState(() => _isSearching = true);
     try {
-      final rows = await Supabase.instance.client
-          .from('users')
-          .select('id, username, avatar_id')
-          .ilike('username', '%$query%')
-          .limit(10);
+      final client = Supabase.instance.client;
+
+      // Search users and tags in parallel
+      final results = await Future.wait([
+        client
+            .from('users')
+            .select('id, username, avatar_id')
+            .ilike('username', '%$query%')
+            .limit(10),
+        client
+            .from('tags')
+            .select('id, name, category')
+            .ilike('name', '%$query%')
+            .limit(10),
+      ]);
+
       if (mounted) {
         setState(() {
-          _userResults = List<Map<String, dynamic>>.from(rows);
+          _userResults = List<Map<String, dynamic>>.from(results[0]);
+          _tagResults = List<Map<String, dynamic>>.from(results[1]);
           _isSearching = false;
         });
       }
     } catch (e) {
-      debugPrint('Error searching users: $e');
+      debugPrint('Error searching: $e');
       if (mounted) setState(() => _isSearching = false);
     }
   }
@@ -90,7 +106,7 @@ class _SearchPageState extends State<SearchPage> {
     if (query.trim().isEmpty) return;
     // Add to recent searches (text type)
     recentSearches.removeWhere(
-        (r) => !r.isProfile && r.query == query.trim());
+        (r) => !r.isProfile && !r.isTag && r.query == query.trim());
     recentSearches.insert(
       0,
       RecentSearch(query: query.trim()),
@@ -118,6 +134,23 @@ class _SearchPageState extends State<SearchPage> {
     if (recentSearches.length > 20) recentSearches.removeLast();
 
     Navigator.of(context).pop(username);
+  }
+
+  void _selectTag(Map<String, dynamic> tag) {
+    final tagName = tag['name'] as String? ?? '';
+    // Add to recent searches (tag type)
+    recentSearches.removeWhere(
+        (r) => r.isTag && r.query == tagName);
+    recentSearches.insert(
+      0,
+      RecentSearch(
+        query: tagName,
+        isTag: true,
+      ),
+    );
+    if (recentSearches.length > 20) recentSearches.removeLast();
+
+    Navigator.of(context).pop(tagName);
   }
 
   void _tapRecentSearch(RecentSearch recent) {
@@ -194,34 +227,106 @@ class _SearchPageState extends State<SearchPage> {
     if (_isSearching) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_userResults.isEmpty) {
+
+    final hasUsers = _userResults.isNotEmpty;
+    final hasTags = _tagResults.isNotEmpty;
+
+    if (!hasUsers && !hasTags) {
       return Center(
-        child: Text('No users found.',
+        child: Text('No results found.',
             style: TextStyle(color: AppColors.thistle)),
       );
     }
-    return ListView.builder(
-      itemCount: _userResults.length,
-      itemBuilder: (context, index) {
-        final user = _userResults[index];
-        final username = user['username'] as String? ?? 'unknown';
-        return ListTile(
-          leading: CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.vintageLavender,
+
+    return ListView(
+      children: [
+        // Tags section
+        if (hasTags) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text(
-              username.isNotEmpty ? username[0].toUpperCase() : '?',
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
+              'Tags',
+              style: TextStyle(
+                color: AppColors.honeyBronze,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          title: Text(
-            '@$username',
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ..._tagResults.map((tag) {
+            final tagName = tag['name'] as String? ?? '';
+            final category = tag['category'] as String? ?? 'subject';
+            final isChallenge = category == 'challenge';
+            return ListTile(
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isChallenge
+                      ? AppColors.honeyBronze.withValues(alpha: 0.2)
+                      : AppColors.vintageLavender.withValues(alpha: 0.3),
+                  border: Border.all(
+                    color: isChallenge
+                        ? AppColors.honeyBronze
+                        : AppColors.vintageLavender,
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  isChallenge ? Icons.emoji_events_rounded : Icons.tag,
+                  color: isChallenge
+                      ? AppColors.honeyBronze
+                      : AppColors.vintageLavender,
+                  size: 16,
+                ),
+              ),
+              title: Text(
+                tagName,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              subtitle: Text(
+                isChallenge ? 'Challenge' : 'Tag',
+                style: TextStyle(color: AppColors.thistle, fontSize: 11),
+              ),
+              onTap: () => _selectTag(tag),
+            );
+          }),
+        ],
+        // Users section
+        if (hasUsers) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              'Users',
+              style: TextStyle(
+                color: AppColors.honeyBronze,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          onTap: () => _selectUser(user),
-        );
-      },
+          ..._userResults.map((user) {
+            final username = user['username'] as String? ?? 'unknown';
+            return ListTile(
+              leading: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.vintageLavender,
+                child: Text(
+                  username.isNotEmpty ? username[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              title: Text(
+                '@$username',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              onTap: () => _selectUser(user),
+            );
+          }),
+        ],
+      ],
     );
   }
 
@@ -249,6 +354,25 @@ class _SearchPageState extends State<SearchPage> {
             ),
             title: Text(
               '@${recent.username}',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            onTap: () => _tapRecentSearch(recent),
+          );
+        } else if (recent.isTag) {
+          return ListTile(
+            leading: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: AppColors.vintageLavender, width: 1),
+              ),
+              child: Icon(Icons.tag,
+                  color: AppColors.vintageLavender, size: 16),
+            ),
+            title: Text(
+              recent.query,
               style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
             onTap: () => _tapRecentSearch(recent),

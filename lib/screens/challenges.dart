@@ -8,6 +8,7 @@ import 'package:meeteor/widgets/challenges/challenge_detail_sheet.dart';
 import 'package:meeteor/widgets/challenges/challenge_editor_dialog.dart';
 import 'package:meeteor/widgets/challenges/today_challenge_card.dart';
 import 'package:meeteor/widgets/challenges/past_challenge_card.dart';
+import 'package:meeteor/widgets/shimmer_loading.dart';
 
 class ChallengesPage extends StatefulWidget {
   final bool adminViewEnabled;
@@ -170,6 +171,14 @@ class _ChallengesPageState extends State<ChallengesPage> {
               size: 260,
             ),
           ),
+          if (_isLoading)
+            const Positioned.fill(
+              child: SafeArea(
+                bottom: false,
+                child: ChallengeSkeleton(),
+              ),
+            ),
+          if (!_isLoading)
           SafeArea(
             bottom: false,
             child: LayoutBuilder(
@@ -424,12 +433,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_challenges.isEmpty)
+        if (_challenges.isEmpty)
           _emptyBox('No daily challenges yet.')
         else if (_todayChallenge == null)
           _emptyBox('No challenge is scheduled for today.')
