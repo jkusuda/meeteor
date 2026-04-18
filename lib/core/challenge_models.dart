@@ -150,7 +150,7 @@ String relativeDateLabel(DateTime activationDate) {
 String submissionTimeLabel(DateTime? completedAt) {
   if (completedAt == null) return 'Now';
 
-  final diff = DateTime.now().difference(completedAt);
+  final diff = DateTime.now().toUtc().difference(completedAt.toUtc());
   if (diff.isNegative || diff.inMinutes < 60) return 'Now';
 
   if (diff.inHours < 24) {

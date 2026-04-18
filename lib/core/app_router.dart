@@ -148,7 +148,9 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/explore',
-              builder: (context, state) => const ExplorePage(),
+              builder: (context, state) => ExplorePage(
+                initialQuery: state.uri.queryParameters['q'],
+              ),
             ),
           ],
         ),
