@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:meeteor/main.dart';
 import 'package:meeteor/core/challenge_models.dart';
 import 'package:meeteor/services/auth_service.dart';
@@ -168,14 +169,6 @@ class _ChallengesPageState extends State<ChallengesPage> {
         children: [
           Positioned.fill(
             child: Image.asset('assets/starry_sky_bg_1.png', fit: BoxFit.cover),
-          ),
-          Positioned(
-            top: -120,
-            right: -80,
-            child: _GlowBlob(
-              color: AppColors.honeyBronze.withValues(alpha: 0.18),
-              size: 220,
-            ),
           ),
           Positioned(
             bottom: 120,
@@ -394,9 +387,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 color: AppColors.honeyBronze,
               ),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Admin Challenge Tools',
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -440,7 +433,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
       children: [
         Text(
           "Today's Challenge",
-          style: TextStyle(
+          style: GoogleFonts.dmSans(
             color: AppColors.thistle,
             fontSize: 19,
             fontWeight: FontWeight.w700,
@@ -486,7 +479,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
           children: [
             Text(
               title,
-              style: TextStyle(
+              style: GoogleFonts.dmSans(
                 color: AppColors.thistle,
                 fontSize: 19,
                 fontWeight: FontWeight.w700,

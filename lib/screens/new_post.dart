@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:meeteor/main.dart'; // AppColors
@@ -378,7 +379,7 @@ class _NewPostPageState extends State<NewPostPage> {
                     const SizedBox(height: 8),
                     Text(
                       'New Post',
-                      style: TextStyle(
+                      style: GoogleFonts.dmSans(
                         color: AppColors.thistle,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
