@@ -576,19 +576,21 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Widget _buildTagsRow(Map<String, dynamic> post) {
     // Extract tags from the normalized post_tags → tags join structure
     final postTags = post['post_tags'] as List<dynamic>? ?? const [];
-    final tags = postTags
-        .map((pt) {
-          final tagData = (pt as Map<String, dynamic>)['tags'];
-          if (tagData is Map<String, dynamic>) {
-            return tagData['name']?.toString().trim() ?? '';
-          }
-          return '';
-        })
-        .where((tag) => tag.isNotEmpty)
-        .toList();
+    
+    // Parse tags into a structured map with name and category
+    final parsedTags = postTags.map((pt) {
+      final tagData = (pt as Map<String, dynamic>)['tags'];
+      if (tagData is Map<String, dynamic>) {
+        return {
+          'name': tagData['name']?.toString().trim() ?? '',
+          'category': tagData['category']?.toString() ?? 'subject',
+        };
+      }
+      return null;
+    }).where((t) => t != null && (t['name'] as String).isNotEmpty).cast<Map<String, String>>().toList();
 
     // Fallback: legacy flat tags array
-    if (tags.isEmpty) {
+    if (parsedTags.isEmpty) {
       final legacyTags = (post['tags'] as List<dynamic>? ?? const [])
           .map((tag) => tag.toString().trim())
           .where((tag) => tag.isNotEmpty)
@@ -599,17 +601,60 @@ class _PostDetailPageState extends State<PostDetailPage> {
         child: Wrap(
           spacing: 6,
           runSpacing: 4,
-          children: legacyTags.map(_buildTag).toList(),
+          children: legacyTags.map((t) => _buildTag(t)).toList(),
         ),
       );
     }
+
+    // Sort tags: challenge tags first, then alphabetically
+    parsedTags.sort((a, b) {
+      if (a['category'] == 'challenge' && b['category'] != 'challenge') return -1;
+      if (b['category'] == 'challenge' && a['category'] != 'challenge') return 1;
+      return a['name']!.compareTo(b['name']!);
+    });
 
     return Padding(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
       child: Wrap(
         spacing: 6,
         runSpacing: 4,
-        children: tags.map(_buildTag).toList(),
+        children: parsedTags.map((t) {
+          if (t['category'] == 'challenge') {
+            return _buildChallengeTag(t['name']!);
+          }
+          return _buildTag(t['name']!);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildChallengeTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.honeyBronze.withValues(alpha: 0.25),
+        border: Border.all(color: AppColors.honeyBronze, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.emoji_events_rounded,
+            color: AppColors.honeyBronze,
+            size: 13,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.honeyBronze,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

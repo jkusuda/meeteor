@@ -9,6 +9,7 @@ import 'package:meeteor/widgets/challenges/challenge_editor_dialog.dart';
 import 'package:meeteor/widgets/challenges/today_challenge_card.dart';
 import 'package:meeteor/widgets/challenges/past_challenge_card.dart';
 import 'package:meeteor/widgets/shimmer_loading.dart';
+import 'package:meeteor/core/app_router.dart';
 
 class ChallengesPage extends StatefulWidget {
   final bool adminViewEnabled;
@@ -35,6 +36,17 @@ class _ChallengesPageState extends State<ChallengesPage> {
     _adminViewEnabled = widget.adminViewEnabled && _canUseAdminView;
     _loadAdminState();
     _fetchChallenges();
+    listRefreshNotifier.addListener(_onRefresh);
+  }
+
+  @override
+  void dispose() {
+    listRefreshNotifier.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  void _onRefresh() {
+    _fetchChallenges();
   }
 
   Future<void> _loadAdminState() async {
@@ -47,7 +59,9 @@ class _ChallengesPageState extends State<ChallengesPage> {
   }
 
   Future<void> _fetchChallenges() async {
-    setState(() => _isLoading = true);
+    if (_challenges.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final challenges = await _challengeService.fetchChallenges();
       if (!mounted) return;
