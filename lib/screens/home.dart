@@ -9,6 +9,7 @@ import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 import 'package:meeteor/widgets/challenges/challenge_card.dart';
 import 'package:meeteor/core/challenge_models.dart';
 import 'package:meeteor/widgets/post_card.dart';
+import 'package:meeteor/widgets/shimmer_loading.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,7 +19,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<Map<String, dynamic>> _livePosts = [];
   List<Map<String, dynamic>> _liveChallenges = [];
   String? _username;
@@ -46,7 +47,10 @@ class _HomePageState extends State<HomePage> {
 
 
   Future<void> _fetchSupabaseData() async {
-    setState(() => _isLoading = true);
+    // Only show loading skeleton on initial load, not on refreshes
+    if (_livePosts.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final session = Supabase.instance.client.auth.currentSession;
       final todayKey = dateKey(DateTime.now());
@@ -54,7 +58,7 @@ class _HomePageState extends State<HomePage> {
       final futures = <Future>[
         Supabase.instance.client
             .from('posts')
-            .select('*, users(username, avatar_id), post_likes(user_id)')
+            .select('*, users(username, avatar_id), post_likes(user_id), post_tags(tags(name, category))')
             .order('created_at', ascending: false),
         Supabase.instance.client
             .from('challenges')
@@ -215,9 +219,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 24),
                   if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator(),
+                    ...List.generate(
+                      3,
+                      (_) => const PostCardSkeleton(),
                     )
                   else if (_livePosts.isEmpty)
                     Column(

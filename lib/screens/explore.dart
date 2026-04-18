@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meeteor/main.dart';
 import 'package:meeteor/screens/search.dart';
+import 'package:meeteor/widgets/shimmer_loading.dart';
+import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExplorePage extends StatefulWidget {
@@ -21,19 +23,39 @@ class _ExplorePageState extends State<ExplorePage> {
   void initState() {
     super.initState();
     _fetchPosts();
+    listRefreshNotifier.addListener(_onRefresh);
+  }
+
+  @override
+  void dispose() {
+    listRefreshNotifier.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  void _onRefresh() {
+    _fetchPosts();
   }
 
   Future<void> _fetchPosts() async {
+    // Only show skeleton on initial load
+    if (_posts.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     try {
       final rows = await Supabase.instance.client
           .from('posts')
-          .select('*, users(username)')
+          .select('*, users(username), post_tags(tags(name))')
           .order('created_at', ascending: false);
       final posts = List<Map<String, dynamic>>.from(rows);
       if (mounted) {
         setState(() {
           _posts = posts;
-          _filtered = posts;
+          // Re-apply active filter if one exists
+          if (_activeQuery.isNotEmpty) {
+            _applyFilter(_activeQuery);
+          } else {
+            _filtered = posts;
+          }
           _isLoading = false;
         });
       }
@@ -55,7 +77,17 @@ class _ExplorePageState extends State<ExplorePage> {
         final caption = (post['caption'] as String? ?? '').toLowerCase();
         final user = post['users'] as Map<String, dynamic>?;
         final username = (user?['username'] as String? ?? '').toLowerCase();
-        return caption.contains(lower) || username.contains(lower);
+        // Also match against tag names
+        final postTags = post['post_tags'] as List<dynamic>? ?? const [];
+        final tagMatch = postTags.any((pt) {
+          final tagData = (pt as Map<String, dynamic>)['tags'];
+          if (tagData is Map<String, dynamic>) {
+            final tagName = (tagData['name']?.toString() ?? '').toLowerCase();
+            return tagName.contains(lower);
+          }
+          return false;
+        });
+        return caption.contains(lower) || username.contains(lower) || tagMatch;
       }).toList();
     });
   }
@@ -135,7 +167,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 // Grid
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const ExploreGridSkeleton()
                       : _filtered.isEmpty
                           ? Center(
                               child: Text(
@@ -149,8 +181,8 @@ class _ExplorePageState extends State<ExplorePage> {
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 3,
-                                crossAxisSpacing: 0,
-                                mainAxisSpacing: 0,
+                                crossAxisSpacing: 2,
+                                mainAxisSpacing: 2,
                               ),
                               itemCount: _filtered.length,
                               itemBuilder: (context, index) {

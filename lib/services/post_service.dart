@@ -1,10 +1,40 @@
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PostService {
   final SupabaseClient _client = Supabase.instance.client;
+
+  /// Fetches all available tags from the tags table, ordered by name.
+  Future<List<Map<String, dynamic>>> fetchTags() async {
+    final rows = await _client
+        .from('tags')
+        .select('id, name, category')
+        .order('name');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  /// Finds or creates a tag by name, returning its id.
+  Future<String> findOrCreateTag(String name, {String category = 'challenge'}) async {
+    // Check if it already exists
+    final existing = await _client
+        .from('tags')
+        .select('id')
+        .eq('name', name)
+        .maybeSingle();
+
+    if (existing != null) {
+      return existing['id'] as String;
+    }
+
+    // Insert new tag
+    final inserted = await _client
+        .from('tags')
+        .insert({'name': name, 'category': category})
+        .select('id')
+        .single();
+    return inserted['id'] as String;
+  }
 
   Future<void> createPost({
     required dynamic imageFile,
@@ -16,6 +46,8 @@ class PostService {
     String? aperture,
     String? exposure,
     String? camera,
+    List<String> tagIds = const [],
+    String? challengeTagName,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) {
@@ -35,7 +67,7 @@ class PostService {
 
     final imageUrl = _client.storage.from('posts').getPublicUrl(filePath);
 
-    await _client.from('posts').insert({
+    final postRow = await _client.from('posts').insert({
       'user_id': user.id,
       'caption': caption,
       'image_url': imageUrl,
@@ -43,7 +75,36 @@ class PostService {
       'aperture': aperture,
       'exposure': exposure,
       'camera': camera,
-    });
+    }).select('id').single();
+
+    final postId = postRow['id'] as String;
+
+    // Collect all tag IDs to associate with this post
+    final allTagIds = <String>{...tagIds};
+
+    // If this is a challenge submission, find-or-create the challenge tag
+    if (challengeTagName != null && challengeTagName.isNotEmpty) {
+      try {
+        final challengeTagId = await findOrCreateTag(challengeTagName, category: 'challenge');
+        allTagIds.add(challengeTagId);
+      } catch (e) {
+        debugPrint('Warning: could not create challenge tag: $e');
+      }
+    }
+
+    // Batch insert post_tags rows
+    if (allTagIds.isNotEmpty) {
+      final postTagRows = allTagIds.map((tagId) => {
+        'post_id': postId,
+        'tag_id': tagId,
+      }).toList();
+
+      try {
+        await _client.from('post_tags').insert(postTagRows);
+      } catch (e) {
+        debugPrint('Warning: could not insert post tags: $e');
+      }
+    }
 
     if (challengeId != null && challengeId.isNotEmpty) {
       // Link challenge submissions using the existing join-table schema.
@@ -59,7 +120,7 @@ class PostService {
   Future<Map<String, dynamic>?> getPostById(String postId) async {
     return _client
         .from('posts')
-        .select('*, users(username, avatar_id), post_likes(user_id)')
+        .select('*, users(username, avatar_id), post_likes(user_id), post_tags(tags(name, category))')
         .eq('id', postId)
         .maybeSingle();
   }

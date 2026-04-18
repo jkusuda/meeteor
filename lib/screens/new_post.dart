@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,6 +37,17 @@ class _NewPostPageState extends State<NewPostPage> {
 
   bool _isUploading = false;
 
+  // Tag state
+  List<Map<String, dynamic>> _availableTags = [];
+  final Set<String> _selectedTagIds = {};
+  bool _tagsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTags();
+  }
+
   @override
   void dispose() {
     _captionController.dispose();
@@ -45,6 +56,21 @@ class _NewPostPageState extends State<NewPostPage> {
     _exposureController.dispose();
     _cameraController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadTags() async {
+    try {
+      final tags = await _postService.fetchTags();
+      if (mounted) {
+        setState(() {
+          _availableTags = tags;
+          _tagsLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading tags: $e');
+      if (mounted) setState(() => _tagsLoading = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -95,6 +121,8 @@ class _NewPostPageState extends State<NewPostPage> {
         aperture: _apertureController.text.trim(),
         exposure: _exposureController.text.trim(),
         camera: _cameraController.text.trim(),
+        tagIds: _selectedTagIds.toList(),
+        challengeTagName: widget.challengeTitle,
       );
 
       if (!mounted) return;
@@ -113,6 +141,7 @@ class _NewPostPageState extends State<NewPostPage> {
       setState(() {
         _selectedImage = null;
         _imageBytes = null;
+        _selectedTagIds.clear();
       });
       _captionController.clear();
       _isoController.clear();
@@ -159,6 +188,127 @@ class _NewPostPageState extends State<NewPostPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.honeyBronze),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTagSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tags',
+          style: TextStyle(
+            color: AppColors.honeyBronze,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'What did you capture?',
+          style: TextStyle(
+            color: AppColors.thistle,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_tagsLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              // Challenge tag chip (auto-selected, non-removable)
+              if (widget.challengeTitle != null)
+                _buildChallengeTagChip(widget.challengeTitle!),
+              // Standard selectable tags
+              ..._availableTags.map(_buildSelectableTagChip),
+            ],
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildChallengeTagChip(String title) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.honeyBronze.withValues(alpha: 0.25),
+        border: Border.all(color: AppColors.honeyBronze, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.emoji_events_rounded,
+            color: AppColors.honeyBronze,
+            size: 14,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(
+              color: AppColors.honeyBronze,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectableTagChip(Map<String, dynamic> tag) {
+    final tagId = tag['id'] as String;
+    final tagName = tag['name'] as String;
+    final isSelected = _selectedTagIds.contains(tagId);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            _selectedTagIds.remove(tagId);
+          } else {
+            _selectedTagIds.add(tagId);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isSelected
+              ? AppColors.vintageLavender.withValues(alpha: 0.4)
+              : AppColors.spaceIndigo,
+          border: Border.all(
+            color: isSelected
+                ? AppColors.vintageLavender
+                : AppColors.vintageLavender.withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          tagName,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.thistle,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
       ),
@@ -332,6 +482,8 @@ class _NewPostPageState extends State<NewPostPage> {
                     maxLines: null,
                     required: true,
                   ),
+                  // Tag selector section
+                  _buildTagSelector(),
                   Text(
                     'Camera Settings (Optional)',
                     style: TextStyle(
