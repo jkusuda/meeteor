@@ -22,9 +22,6 @@ class UserService {
       throw StateError('No authenticated user.');
     }
 
-    await _client.from('users').upsert({
-      'id': user.id,
-      ...data,
-    });
+    await _client.from('users').update(data).eq('id', user.id);
   }
 }

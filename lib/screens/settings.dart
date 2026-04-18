@@ -134,9 +134,19 @@ class _SettingsPageState extends State<SettingsPage> {
                       Navigator.of(ctx).pop();
                       try {
                         await _userService.updateProfile({'avatar_id': icon});
-                        if (mounted) setState(() => _avatarId = icon);
+                        if (mounted) {
+                          setState(() => _avatarId = icon);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Avatar successfully changed!')),
+                          );
+                        }
                       } catch (e) {
                         debugPrint('Avatar update error: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to update avatar: $e')),
+                          );
+                        }
                       }
                     },
                     child: Container(
@@ -221,6 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: controller,
+                    cursorColor: AppColors.honeyBronze,
                     maxLength: maxLength,
                     maxLines: title.contains('Bio') ? 4 : 1,
                     autofocus: true,
@@ -265,7 +276,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           : () async {
                               final value = controller.text.trim();
                               Navigator.of(ctx).pop();
-                              if (value.isNotEmpty) await onSave(value);
+                              if (title.contains('Bio') || value.isNotEmpty) {
+                                await onSave(value);
+                              }
                             },
                       child: Text(
                         'Save',
@@ -494,12 +507,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Username saved!'),
-                                        backgroundColor: AppColors.honeyBronze,
                                       ),
                                     );
                                   }
                                 } catch (e) {
                                   debugPrint('Username error: $e');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Failed to update username: $e')),
+                                    );
+                                  }
                                 }
                               },
                             ),
@@ -523,12 +540,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Bio saved!'),
-                                        backgroundColor: AppColors.honeyBronze,
                                       ),
                                     );
                                   }
                                 } catch (e) {
                                   debugPrint('Bio error: $e');
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Failed to update bio: $e')),
+                                    );
+                                  }
                                 }
                               },
                             ),
