@@ -1,25 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meeteor/main.dart';
+import 'package:meeteor/core/challenge_models.dart';
 
+// Compact challenge card used in the horizontal list on the home page.
 class ChallengeCard extends StatelessWidget {
   final Map<String, dynamic> challenge;
   final int columns;
 
   const ChallengeCard({super.key, required this.challenge, this.columns = 3});
-
-  IconData _getIconData(String? iconName) {
-    switch (iconName) {
-      case 'star':
-        return Icons.star;
-      case 'camera':
-        return Icons.camera_alt;
-      case 'moon':
-        return Icons.nightlight_round;
-      default:
-        return Icons.extension;
-    }
-  }
 
   void _showChallengeDialog(
     BuildContext context,
@@ -109,10 +98,11 @@ class ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconName = challenge['icon'] as String?;
+    final iconName =
+        (challenge['icon'] ?? challenge['icon_name'] ?? 'star') as String;
     final title = challenge['title'] as String? ?? 'Challenge';
     final description = challenge['description'] as String? ?? '';
-    final icon = _getIconData(iconName);
+    final icon = iconForName(iconName);
 
     final cardWidth =
         (MediaQuery.of(context).size.width - 32 - 16 - 36) / columns;
