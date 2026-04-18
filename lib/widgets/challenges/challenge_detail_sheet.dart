@@ -248,7 +248,10 @@ class _ChallengeDetailBody extends StatelessWidget {
                               Navigator.pop(context);
                               context.go(Uri(
                                 path: '/explore',
-                                queryParameters: {'q': challenge.title},
+                                queryParameters: {
+                                  'q': challenge.title,
+                                  'v': DateTime.now().millisecondsSinceEpoch.toString(),
+                                },
                               ).toString());
                             },
                             child: Text(

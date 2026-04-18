@@ -150,6 +150,7 @@ final appRouter = GoRouter(
               path: '/explore',
               builder: (context, state) => ExplorePage(
                 initialQuery: state.uri.queryParameters['q'],
+                navigationId: state.uri.queryParameters['v'],
               ),
             ),
           ],
