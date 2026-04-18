@@ -554,11 +554,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               },
                             ),
                           ),
-                          _settingsTile(
-                            icon: Icons.lock_outline,
-                            label: 'Change Password',
-                            onTap: () {},
-                          ),
                           if (_isAdminUser && widget.onToggleAdminView != null) ...[
                             const SizedBox(height: 24),
                             _sectionLabel('Admin Settings'),
