@@ -4,6 +4,7 @@ import 'package:meeteor/main.dart';
 import 'package:meeteor/services/post_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:meeteor/core/app_router.dart';
+import 'package:go_router/go_router.dart';
 
 class PostDetailPage extends StatefulWidget {
   final String postId;
@@ -221,6 +222,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         postUser?['username'] as String? ??
         _post!['username'] as String? ??
         'unknown';
+    final avatarId = postUser?['avatar_id'] as String?;
     final imageUrl = _post!['imageUrl'] ?? _post!['image_url'];
     final caption = _post!['caption'] as String? ?? '';
 
@@ -248,31 +250,44 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: AppColors.vintageLavender,
-                            child: Text(
-                              username.isNotEmpty
-                                  ? username[0].toUpperCase()
-                                  : '?',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          final targetUserId = _post!['user_id'];
+                          if (targetUserId != null) {
+                            context.push('/profile/$targetUserId');
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.vintageLavender,
+                              backgroundImage: (avatarId != null && avatarId.startsWith('http'))
+                                  ? NetworkImage(avatarId)
+                                  : null,
+                              child: (avatarId == null || avatarId.isEmpty)
+                                  ? Text(
+                                      username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    )
+                                  : (!avatarId.startsWith('http'))
+                                      ? Text(avatarId, style: const TextStyle(fontSize: 20))
+                                      : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '@$username',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            '@$username',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
                           if (_post!['user_id'] == Supabase.instance.client.auth.currentUser?.id || adminViewEnabledNotifier.value) ...[
                             const Spacer(),
                             SizedBox(
@@ -320,6 +335,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ],
                       ),
                     ),
+                  ),
                     const SizedBox(height: 8),
                     // Post image
                     if (imageUrl != null)
