@@ -41,6 +41,9 @@ final _profileTabNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profileTa
 // Global trigger for refreshing lists (like posts after an upload)
 final ValueNotifier<int> listRefreshNotifier = ValueNotifier<int>(0);
 
+// Global flag to suspend auto-redirect when a password reset is occurring
+bool isPasswordRecoveryFlow = false;
+
 // Global like-state cache shared between feed and detail pages.
 // Maps post ID -> liked boolean. Updated optimistically on toggle.
 final Map<String, bool> likeStateCache = {};
@@ -108,6 +111,7 @@ final appRouter = GoRouter(
       return '/login';
     }
     if (loggedIn && loggingIn) {
+      if (isPasswordRecoveryFlow) return null;
       return '/';
     }
     return null;
