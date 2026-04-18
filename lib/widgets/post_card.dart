@@ -212,6 +212,7 @@ class _PostCardState extends State<PostCard> {
         postUser?['username'] as String? ??
         widget.post['username'] as String? ??
         'unknown';
+    final avatarId = postUser?['avatar_id'] as String?;
 
     return GestureDetector(
       onTap: () => context.push('/p/${widget.post['id']}'),
@@ -226,29 +227,42 @@ class _PostCardState extends State<PostCard> {
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.vintageLavender,
-                    child: Text(
-                      username.isNotEmpty ? username[0].toUpperCase() : '?',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  final targetUserId = widget.post['user_id'];
+                  if (targetUserId != null) {
+                    context.push('/profile/$targetUserId');
+                  }
+                },
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppColors.vintageLavender,
+                      backgroundImage: (avatarId != null && avatarId.startsWith('http'))
+                          ? NetworkImage(avatarId)
+                          : null,
+                      child: (avatarId == null || avatarId.isEmpty)
+                          ? Text(
+                              username.isNotEmpty ? username[0].toUpperCase() : '?',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            )
+                          : (!avatarId.startsWith('http'))
+                              ? Text(avatarId, style: const TextStyle(fontSize: 18))
+                              : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '@$username',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '@$username',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             ClipRRect(

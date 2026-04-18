@@ -12,6 +12,7 @@ class ProfilePage extends StatefulWidget {
   final VoidCallback? onToggleDemo;
   final bool adminViewEnabled;
   final VoidCallback? onToggleAdminView;
+  final String? userId;
 
   const ProfilePage({
     super.key,
@@ -19,6 +20,7 @@ class ProfilePage extends StatefulWidget {
     this.onToggleDemo,
     this.adminViewEnabled = false,
     this.onToggleAdminView,
+    this.userId,
   });
 
   @override
@@ -60,23 +62,27 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final session = Supabase.instance.client.auth.currentSession;
       if (session != null) {
-        // Fetch using the standard syntax
+        final targetUserId = widget.userId ?? session.user.id;
+        
         final data = await Supabase.instance.client
             .from('users')
             .select()
-            .eq('id', session.user.id);
+            .eq('id', targetUserId);
 
         final postsRes = await Supabase.instance.client
             .from('posts')
-            .select('*, users(username, avatar_id), post_likes(user_id)')
-            .eq('user_id', session.user.id)
+            .select('*, users(username, avatar_id), post_likes(user_id), post_tags(tags(name, category))')
+            .eq('user_id', targetUserId)
             .order('created_at', ascending: false);
 
-        final likesRes = await Supabase.instance.client
-            .from('post_likes')
-            .select('posts(*, users(username, avatar_id), post_likes(user_id))')
-            .eq('user_id', session.user.id)
-            .order('created_at', ascending: false);
+        List<dynamic> likesRes = [];
+        if (_isCurrentUser) {
+          likesRes = await Supabase.instance.client
+              .from('post_likes')
+              .select('posts(*, users(username, avatar_id), post_likes(user_id), post_tags(tags(name, category)))')
+              .eq('user_id', session.user.id)
+              .order('created_at', ascending: false);
+        }
 
         if (mounted) {
           setState(() {
@@ -112,6 +118,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  bool get _isCurrentUser => widget.userId == null || widget.userId == Supabase.instance.client.auth.currentSession?.user.id;
+
   String get _displayUsername => _username ?? 'Guest';
   String get _displayBio => _bio ?? '';
 
@@ -125,27 +133,34 @@ class _ProfilePageState extends State<ProfilePage> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          leading: widget.userId != null
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null,
           actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 9.0, top: 9.0),
-              child: IconButton(
-                icon: const Icon(Icons.settings, color: AppColors.thistle),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SettingsPage(
-                        initialUsername: _username,
-                        initialBio: _bio,
-                        initialAvatarId: _avatarId,
-                        adminViewEnabled: widget.adminViewEnabled,
-                        onToggleAdminView: widget.onToggleAdminView,
+            if (_isCurrentUser)
+              Padding(
+                padding: const EdgeInsets.only(right: 9.0, top: 9.0),
+                child: IconButton(
+                  icon: const Icon(Icons.settings, color: AppColors.thistle),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SettingsPage(
+                          initialUsername: _username,
+                          initialBio: _bio,
+                          initialAvatarId: _avatarId,
+                          adminViewEnabled: widget.adminViewEnabled,
+                          onToggleAdminView: widget.onToggleAdminView,
+                        ),
                       ),
-                    ),
-                  ).then((_) => _fetchProfile());
-                },
+                    ).then((_) => _fetchProfile());
+                  },
+                ),
               ),
-            ),
           ],
         ),
         body: Stack(
@@ -233,79 +248,29 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 10),
 
                         // Tabs
-                        const TabBar(
-                          indicatorColor: AppColors.vintageLavender,
-                          labelColor: Colors.white,
-                          unselectedLabelColor: Colors.white54,
-                          tabs: [
-                            Tab(icon: Icon(Icons.grid_on)),
-                            Tab(icon: Icon(Icons.favorite)),
-                          ],
-                        ),
+                        if (_isCurrentUser)
+                          const TabBar(
+                            indicatorColor: AppColors.vintageLavender,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: Colors.white54,
+                            tabs: [
+                              Tab(icon: Icon(Icons.grid_on)),
+                              Tab(icon: Icon(Icons.favorite)),
+                            ],
+                          ),
 
                         // TabBarView for Grids
                         Expanded(
-                          child: TabBarView(
-                            children: [
-                              // Tab 1: My Posts
-                              _myPosts.isEmpty
-                                  ? const Center(
-                                      child: Text(
-                                        'No posts to display, create your first post today!',
-                                        style: TextStyle(color: Colors.white54),
-                                      ),
-                                    )
-                                  : GridView.builder(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        2,
-                                        16,
-                                        88,
-                                      ),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 2,
-                                            crossAxisSpacing: 8,
-                                            mainAxisSpacing: 8,
-                                            childAspectRatio: 1,
-                                          ),
-                                      itemCount: _myPosts.length,
-                                      itemBuilder: (context, index) {
-                                        final post = _myPosts[index];
-                                        return ProfilePostCard(post: post);
-                                      },
-                                    ),
-
-                              // Tab 2: Liked Posts
-                              _likedPosts.isEmpty
-                                  ? const Center(
-                                      child: Text(
-                                        'No liked posts yet',
-                                        style: TextStyle(color: Colors.white54),
-                                      ),
-                                    )
-                                  : GridView.builder(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        2,
-                                        16,
-                                        88,
-                                      ),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 2,
-                                            crossAxisSpacing: 8,
-                                            mainAxisSpacing: 8,
-                                            childAspectRatio: 1,
-                                          ),
-                                      itemCount: _likedPosts.length,
-                                      itemBuilder: (context, index) {
-                                        final post = _likedPosts[index];
-                                        return ProfilePostCard(post: post);
-                                      },
-                                    ),
-                            ],
-                          ),
+                          child: _isCurrentUser
+                              ? TabBarView(
+                                  children: [
+                                    // Tab 1: My Posts
+                                    _buildGrid(_myPosts, 'No posts to display, create your first post today!'),
+                                    // Tab 2: Liked Posts
+                                    _buildGrid(_likedPosts, 'No liked posts yet'),
+                                  ],
+                                )
+                              : _buildGrid(_myPosts, 'This user has no posts yet.'),
                         ),
                       ],
                     ),
@@ -313,6 +278,28 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGrid(List<Map<String, dynamic>> posts, String emptyMessage) {
+    if (posts.isEmpty) {
+      return Center(
+        child: Text(emptyMessage, style: const TextStyle(color: Colors.white54)),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 88),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1,
+      ),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return ProfilePostCard(post: post);
+      },
     );
   }
 }

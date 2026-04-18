@@ -125,6 +125,10 @@ final appRouter = GoRouter(
       path: '/p/:id',
       builder: (context, state) => PostDetailPage(postId: state.pathParameters['id']!),
     ),
+    GoRoute(
+      path: '/profile/:userId',
+      builder: (context, state) => ProfilePage(userId: state.pathParameters['userId']!),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return AppShell(navigationShell: navigationShell);

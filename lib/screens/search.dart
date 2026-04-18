@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:meeteor/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 /// Represents a recent search entry.
 class RecentSearch {
   final String query;
   final bool isProfile;
   final bool isTag;
+  final String? userId; // Store the ID for direct navigation
   final String? username;
+  final String? avatarId; // Store the actual avatar ID/URL
   final String? avatarInitial;
 
   const RecentSearch({
     required this.query,
     this.isProfile = false,
     this.isTag = false,
+    this.userId,
     this.username,
+    this.avatarId,
     this.avatarInitial,
   });
 }
@@ -126,14 +131,20 @@ class _SearchPageState extends State<SearchPage> {
       RecentSearch(
         query: username,
         isProfile: true,
+        userId: user['id'],
         username: username,
-        avatarInitial:
-            username.isNotEmpty ? username[0].toUpperCase() : '?',
+        avatarId: user['avatar_id'],
+        avatarInitial: username.isNotEmpty ? username[0].toUpperCase() : '?',
       ),
     );
     if (recentSearches.length > 20) recentSearches.removeLast();
 
-    Navigator.of(context).pop(username);
+    final userId = user['id'];
+    if (userId != null) {
+      context.push('/profile/$userId');
+    } else {
+      Navigator.of(context).pop(username);
+    }
   }
 
   void _selectTag(Map<String, dynamic> tag) {
@@ -154,7 +165,11 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _tapRecentSearch(RecentSearch recent) {
-    Navigator.of(context).pop(recent.query);
+    if (recent.isProfile && recent.userId != null) {
+      context.push('/profile/${recent.userId}');
+    } else {
+      Navigator.of(context).pop(recent.query);
+    }
   }
 
   @override
@@ -308,15 +323,22 @@ class _SearchPageState extends State<SearchPage> {
           ),
           ..._userResults.map((user) {
             final username = user['username'] as String? ?? 'unknown';
+            final avatarId = user['avatar_id'] as String?;
             return ListTile(
               leading: CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.vintageLavender,
-                child: Text(
-                  username.isNotEmpty ? username[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
+                backgroundImage: (avatarId != null && avatarId.startsWith('http'))
+                    ? NetworkImage(avatarId)
+                    : null,
+                child: (avatarId == null || avatarId.isEmpty)
+                    ? Text(
+                        username.isNotEmpty ? username[0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      )
+                    : (!avatarId.startsWith('http'))
+                        ? Text(avatarId, style: const TextStyle(fontSize: 18))
+                        : null,
               ),
               title: Text(
                 '@$username',
@@ -346,11 +368,17 @@ class _SearchPageState extends State<SearchPage> {
             leading: CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.vintageLavender,
-              child: Text(
-                recent.avatarInitial ?? '?',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              backgroundImage: (recent.avatarId != null && recent.avatarId!.startsWith('http'))
+                  ? NetworkImage(recent.avatarId!)
+                  : null,
+              child: (recent.avatarId == null || recent.avatarId!.isEmpty)
+                  ? Text(
+                      recent.avatarInitial ?? '?',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    )
+                  : (!recent.avatarId!.startsWith('http'))
+                      ? Text(recent.avatarId!, style: const TextStyle(fontSize: 18))
+                      : null,
             ),
             title: Text(
               '@${recent.username}',
