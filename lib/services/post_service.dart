@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:meeteor/services/auth_service.dart';
 
 class PostService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -132,8 +133,19 @@ class PostService {
       // Get the post to extract the image URL for deletion from storage
       final post = await _client.from('posts').select('image_url').eq('id', postId).maybeSingle();
       
-      // Delete from database
-      await _client.from('posts').delete().eq('id', postId).eq('user_id', user.id);
+      final isAdmin = await AuthService().hasAdminAccess();
+      
+      // Delete from database and return the deleted rows to verify success
+      var query = _client.from('posts').delete().eq('id', postId);
+      if (!isAdmin) {
+        query = query.eq('user_id', user.id);
+      }
+      
+      final deletedData = await query.select();
+      
+      if (deletedData.isEmpty) {
+        throw Exception('Post could not be deleted. Check if you have permission (RLS) to delete this post.');
+      }
 
       // Attempt to delete the image from storage if it exists
       if (post != null && post['image_url'] != null) {

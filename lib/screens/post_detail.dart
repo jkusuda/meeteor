@@ -273,7 +273,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               fontSize: 16,
                             ),
                           ),
-                          if (_post!['user_id'] == Supabase.instance.client.auth.currentUser?.id) ...[
+                          if (_post!['user_id'] == Supabase.instance.client.auth.currentUser?.id || adminViewEnabledNotifier.value) ...[
                             const Spacer(),
                             SizedBox(
                               width: 32,
