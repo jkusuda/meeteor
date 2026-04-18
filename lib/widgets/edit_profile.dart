@@ -80,6 +80,7 @@ class _EditProfileState extends State<EditProfile> {
           const SizedBox(height: 24),
           TextField(
             controller: _controller,
+            cursorColor: AppColors.honeyBronze,
             maxLength: widget.maxLength,
             maxLines: widget.title.contains('Bio') ? 4 : 1,
             autofocus: true,
