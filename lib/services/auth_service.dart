@@ -21,6 +21,27 @@ class AuthService {
     await _client.auth.signOut();
   }
 
+  // Reset password (triggers OTP email delivery)
+  Future<void> resetPassword({required String email}) async {
+    await _client.auth.resetPasswordForEmail(email);
+  }
+
+  // Verify OTP for password recovery
+  Future<void> verifyRecoveryOTP({required String email, required String token}) async {
+    await _client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.recovery,
+    );
+  }
+
+  // Update password (must be called after successfully verifying OTP)
+  Future<void> updatePassword(String newPassword) async {
+    await _client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
   // Sign in with Google (web: OAuth redirect, mobile: native SDK)
   Future<void> signInWithGoogle() async {
     if (kIsWeb) {
