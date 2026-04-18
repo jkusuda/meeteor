@@ -135,6 +135,7 @@ class AuthTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      cursorColor: AuthColors.accent,
       obscureText: obscureText,
       obscuringCharacter: '•',
       textInputAction: textInputAction,

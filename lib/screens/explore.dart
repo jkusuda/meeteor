@@ -184,9 +184,10 @@ class _ExplorePageState extends State<ExplorePage> {
                                   left: 16, right: 16, bottom: 88),
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 2,
-                                mainAxisSpacing: 2,
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
                               ),
                               itemCount: _filtered.length,
                               itemBuilder: (context, index) {
@@ -196,18 +197,21 @@ class _ExplorePageState extends State<ExplorePage> {
                                 return GestureDetector(
                                   onTap: () =>
                                       context.push('/p/${post['id']}'),
-                                  child: imageUrl != null
-                                      ? Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Container(
-                                          color: AppColors.spaceIndigo,
-                                          child: const Icon(
-                                            Icons.image_not_supported,
-                                            color: Colors.white54,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: imageUrl != null
+                                        ? Image.network(
+                                            imageUrl,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Container(
+                                            color: AppColors.spaceIndigo,
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.white54,
+                                            ),
                                           ),
-                                        ),
+                                  ),
                                 );
                               },
                             ),

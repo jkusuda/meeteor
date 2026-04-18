@@ -137,14 +137,30 @@ class _SettingsPageState extends State<SettingsPage> {
                         if (mounted) {
                           setState(() => _avatarId = icon);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Avatar successfully changed!')),
+                            SnackBar(
+                              content: const Text('Avatar successfully changed!'),
+                              backgroundColor: AppColors.spaceIndigo,
+                              behavior: SnackBarBehavior.floating,
+                              margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           );
                         }
                       } catch (e) {
                         debugPrint('Avatar update error: $e');
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to update avatar: $e')),
+                            SnackBar(
+                              content: Text('Failed to update avatar: $e'),
+                              backgroundColor: AppColors.spaceIndigo,
+                              behavior: SnackBarBehavior.floating,
+                              margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           );
                         }
                       }
@@ -505,8 +521,14 @@ class _SettingsPageState extends State<SettingsPage> {
                                   if (mounted) {
                                     setState(() => _username = val);
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Username saved!'),
+                                      SnackBar(
+                                        content: const Text('Username saved!'),
+                                        backgroundColor: AppColors.spaceIndigo,
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
                                       ),
                                     );
                                   }
@@ -514,7 +536,15 @@ class _SettingsPageState extends State<SettingsPage> {
                                   debugPrint('Username error: $e');
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Failed to update username: $e')),
+                                      SnackBar(
+                                        content: Text('Failed to update username: $e'),
+                                        backgroundColor: AppColors.spaceIndigo,
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
                                     );
                                   }
                                 }
@@ -538,8 +568,14 @@ class _SettingsPageState extends State<SettingsPage> {
                                   if (mounted) {
                                     setState(() => _bio = val);
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Bio saved!'),
+                                      SnackBar(
+                                        content: const Text('Bio saved!'),
+                                        backgroundColor: AppColors.spaceIndigo,
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
                                       ),
                                     );
                                   }
@@ -547,7 +583,15 @@ class _SettingsPageState extends State<SettingsPage> {
                                   debugPrint('Bio error: $e');
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Failed to update bio: $e')),
+                                      SnackBar(
+                                        content: Text('Failed to update bio: $e'),
+                                        backgroundColor: AppColors.spaceIndigo,
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
                                     );
                                   }
                                 }
