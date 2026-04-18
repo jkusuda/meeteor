@@ -134,7 +134,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
         await _postService.deletePost(widget.postId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Post deleted successfully.'), backgroundColor: AppColors.spaceIndigo),
+            SnackBar(
+              content: const Text('Post deleted successfully.'),
+              backgroundColor: AppColors.spaceIndigo,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(bottom: 5, left: 16, right: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           );
           // Trigger global refresh to update Home/Profile grids immediately
           listRefreshNotifier.value++;
