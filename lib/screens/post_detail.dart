@@ -98,6 +98,60 @@ class _PostDetailPageState extends State<PostDetailPage> {
     ).showSnackBar(const SnackBar(content: Text('Link copied to clipboard!')));
   }
 
+  Future<void> _deletePost() async {
+    if (_post == null) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.spaceIndigo,
+        title: const Text('Delete Post', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Are you sure you want to delete this post? This action cannot be undone.',
+          style: TextStyle(color: AppColors.thistle),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.thistle)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      setState(() => _isLoading = true);
+      try {
+        await _postService.deletePost(widget.postId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post deleted successfully.'), backgroundColor: AppColors.spaceIndigo),
+          );
+          // Trigger global refresh to update Home/Profile grids immediately
+          listRefreshNotifier.value++;
+          
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete post: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _submitComment() async {
     if (_commentController.text.trim().isEmpty) return;
     try {
@@ -219,6 +273,50 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               fontSize: 16,
                             ),
                           ),
+                          if (_post!['user_id'] == Supabase.instance.client.auth.currentUser?.id) ...[
+                            const Spacer(),
+                            SizedBox(
+                              width: 32,
+                              child: PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                iconSize: 22,
+                                icon: const Icon(Icons.more_horiz, color: Colors.white70),
+                                color: AppColors.spaceIndigo,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: AppColors.vintageLavender.withValues(alpha: 0.3), width: 1),
+                                ),
+                                elevation: 8,
+                                offset: const Offset(0, 36),
+                                onSelected: (value) {
+                                  if (value == 'delete') {
+                                    _deletePost();
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) => [
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    height: 32,
+                                    padding: EdgeInsets.symmetric(horizontal: 12),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Delete Post',
+                                          style: TextStyle(
+                                            color: Colors.redAccent,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
