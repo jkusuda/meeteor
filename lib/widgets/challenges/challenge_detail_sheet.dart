@@ -43,7 +43,7 @@ class ChallengeDetailSheet extends StatelessWidget {
     );
 
     if (shouldSubmit && context.mounted) {
-      context.push(
+      context.go(
         Uri(
           path: '/post',
           queryParameters: {
@@ -242,12 +242,17 @@ class _ChallengeDetailBody extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (challenge.submissions.length > 5)
+                        if (challenge.submissions.length > 3)
                           TextButton(
-                            onPressed: () =>
-                                _showAllSubmissions(context, challenge),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.go(Uri(
+                                path: '/explore',
+                                queryParameters: {'q': challenge.title},
+                              ).toString());
+                            },
                             child: Text(
-                              'View All',
+                              'View All Tagged',
                               style: TextStyle(color: AppColors.honeyBronze),
                             ),
                           ),
@@ -271,7 +276,7 @@ class _ChallengeDetailBody extends StatelessWidget {
                       )
                     else
                       ...challenge.submissions
-                          .take(5)
+                          .take(3)
                           .map((s) => _SubmissionTile(submission: s)),
 
                     const SizedBox(height: 12),
@@ -343,76 +348,8 @@ class _ChallengeDetailBody extends StatelessWidget {
     );
   }
 
-  void _showAllSubmissions(BuildContext context, DailyChallenge challenge) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(sheetContext).size.height * 0.9,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.prussianBlue,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'All Community Submissions',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        CircleAvatar(
-                          backgroundColor: AppColors.prussianBlue.withValues(
-                            alpha: 0.75,
-                          ),
-                          child: IconButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                            icon: const Icon(Icons.close_rounded),
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      itemCount: challenge.submissions.length,
-                      separatorBuilder: (_, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        return _SubmissionTile(
-                          submission: challenge.submissions[index],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+
+
 }
 
 class _InfoPill extends StatelessWidget {

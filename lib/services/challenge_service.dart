@@ -38,46 +38,42 @@ class ChallengeService {
 
   Future<DailyChallenge> _attachSubmissions(DailyChallenge challenge) async {
     try {
-      final rows = await _client
-          .from('user_challenges')
-          .select(
-            'id, user_id, challenge_id, completed_at, imageUrl, users(username)',
-          )
-          .eq('challenge_id', challenge.id)
-          .order('completed_at', ascending: false);
+      // 1. Find the challenge tag ID
+      final tagRows = await _client
+          .from('tags')
+          .select('id')
+          .eq('category', 'challenge')
+          .eq('name', challenge.title);
+      
+      if (tagRows.isEmpty) return challenge;
+      final tagId = tagRows.first['id'];
 
-      final imageUrls = List<Map<String, dynamic>>.from(rows)
-          .map((row) => (row['imageUrl'] ?? '').toString())
-          .where((url) => url.isNotEmpty)
-          .toSet()
-          .toList();
+      // 2. Find all posts tagged with this challenge
+      final postTagRows = await _client
+          .from('post_tags')
+          .select('post_id')
+          .eq('tag_id', tagId);
+          
+      if (postTagRows.isEmpty) return challenge;
+      final postIds = postTagRows.map((r) => r['post_id']).toList();
 
-      final postCaptionByImageUrl = <String, String>{};
-      if (imageUrls.isNotEmpty) {
-        final postRows = await _client
-            .from('posts')
-            .select('image_url, caption')
-            .inFilter('image_url', imageUrls);
+      // 3. Fetch the actual posts
+      final postRows = await _client
+          .from('posts')
+          .select('id, created_at, image_url, caption, users(username)')
+          .inFilter('id', postIds)
+          .order('created_at', ascending: false);
 
-        for (final postRow in List<Map<String, dynamic>>.from(postRows)) {
-          final imageUrl = (postRow['image_url'] ?? '').toString();
-          final caption = (postRow['caption'] ?? '').toString();
-          if (imageUrl.isNotEmpty) {
-            postCaptionByImageUrl[imageUrl] = caption;
-          }
-        }
-      }
-
-      final submissions = List<Map<String, dynamic>>.from(rows).map((row) {
+      final submissions = List<Map<String, dynamic>>.from(postRows).map((row) {
         final user = row['users'] as Map<String, dynamic>?;
-        final completedAt = _parseDate(row['completed_at']);
-        final imageUrl = (row['imageUrl'] ?? '').toString();
+        final completedAt = _parseDate(row['created_at']);
+        final imageUrl = (row['image_url'] ?? '').toString();
+        final caption = (row['caption'] ?? '').toString();
+        
         return ChallengeSubmission(
           username: (user?['username'] as String? ?? 'Anonymous').toString(),
           imageUrl: imageUrl,
-          note: postCaptionByImageUrl[imageUrl]?.trim().isNotEmpty == true
-              ? postCaptionByImageUrl[imageUrl]!.trim()
-              : 'Challenge submission',
+          note: caption.isNotEmpty ? caption.trim() : 'Challenge submission',
           gear: 'Posted from Meeteor',
           timeAgo: submissionTimeLabel(completedAt),
           accentColor: highlightForIndex(row['id'].hashCode.abs()),

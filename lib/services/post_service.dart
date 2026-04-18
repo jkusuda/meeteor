@@ -11,6 +11,7 @@ class PostService {
     final rows = await _client
         .from('tags')
         .select('id, name, category')
+        .eq('category', 'subject')
         .order('name');
     return List<Map<String, dynamic>>.from(rows);
   }
@@ -22,6 +23,7 @@ class PostService {
         .from('tags')
         .select('id')
         .eq('name', name)
+        .eq('category', category)
         .maybeSingle();
 
     if (existing != null) {
@@ -107,15 +109,8 @@ class PostService {
       }
     }
 
-    if (challengeId != null && challengeId.isNotEmpty) {
-      // Link challenge submissions using the existing join-table schema.
-      await _client.from('user_challenges').insert({
-        'user_id': user.id,
-        'challenge_id': challengeId,
-        'completed_at': DateTime.now().toIso8601String(),
-        'imageUrl': imageUrl,
-      });
-    }
+    // Note: challenge submissions are now tracked entirely via post_tags.
+    // The user_challenges table is no longer written to.
   }
 
   Future<Map<String, dynamic>?> getPostById(String postId) async {

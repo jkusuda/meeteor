@@ -7,7 +7,8 @@ import 'package:meeteor/core/app_router.dart'; // listRefreshNotifier
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key});
+  final String? initialQuery;
+  const ExplorePage({super.key, this.initialQuery});
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -22,6 +23,9 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialQuery != null) {
+      _activeQuery = widget.initialQuery!;
+    }
     _fetchPosts();
     listRefreshNotifier.addListener(_onRefresh);
   }
