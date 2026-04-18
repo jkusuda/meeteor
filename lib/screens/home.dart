@@ -203,7 +203,7 @@ class _HomePageState extends State<HomePage> {
                                     maxLines: 1,
                                     softWrap: false,
                                     overflow: TextOverflow.visible,
-                                    style: TextStyle(
+                                    style: GoogleFonts.dmSans(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.thistle,
