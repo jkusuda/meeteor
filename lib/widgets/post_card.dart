@@ -88,11 +88,36 @@ class _PostCardState extends State<PostCard> {
   }
 
   Widget _buildTagsRow(Map<String, dynamic> post) {
-    final tags = (post['tags'] as List<dynamic>? ?? const [])
-        .map((tag) => tag.toString().trim())
+    // Extract tags from the normalized post_tags → tags join structure
+    final postTags = post['post_tags'] as List<dynamic>? ?? const [];
+    final tags = postTags
+        .map((pt) {
+          final tagData = (pt as Map<String, dynamic>)['tags'];
+          if (tagData is Map<String, dynamic>) {
+            return tagData['name']?.toString().trim() ?? '';
+          }
+          return '';
+        })
         .where((tag) => tag.isNotEmpty)
         .toList();
-    if (tags.isEmpty) return const SizedBox.shrink();
+
+    // Fallback: legacy flat tags array
+    if (tags.isEmpty) {
+      final legacyTags = (post['tags'] as List<dynamic>? ?? const [])
+          .map((tag) => tag.toString().trim())
+          .where((tag) => tag.isNotEmpty)
+          .toList();
+      if (legacyTags.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: legacyTags.map(_buildTag).toList(),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
       child: Wrap(
