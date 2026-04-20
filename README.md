@@ -1,6 +1,6 @@
 # Meeteor 📸
 
-An astrophotography social platform that encourages users to capture celestial objects through daily challenges, share camera specs, and build a community.
+An astrophotography social platform that encourages users to capture celestial objects through daily challenges, share photography, and build a community.
 
 ## 🎯 Project Overview
 
@@ -9,9 +9,8 @@ An astrophotography social platform that encourages users to capture celestial o
 **Key Features:**
 - Daily astrophotography challenges based on what's visible in the night sky
 - Share photos with detailed camera/telescope specifications
-- Equipment-based search
 - Community feed with likes and comments
-- User profiles with stats and achievements
+- User profiles
 
 ---
 
@@ -24,11 +23,6 @@ An astrophotography social platform that encourages users to capture celestial o
 ### Backend (Supabase)
 - **Supabase Authentication** - User login/registration
 - **Supabase PostgreSQL Database** - Relational database for users, posts, challenges
-- **Row Level Security (RLS)** - Secure data access policies
-
-### Development Tools
-- **VS Code** - IDE with Flutter plugin
-- **Supabase Dashboard** - Backend management dashboard
 
 ---
 
@@ -106,14 +100,12 @@ flutter pub get
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory and add your Supabase credentials:
+Create a `.env` file in the root directory and add Supabase credentials:
 
 ```env
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
-
-*(You can find these in your Supabase project settings under API).*
 
 ### 4. Run the App (Web Development)
 
@@ -129,59 +121,6 @@ Open your browser and navigate to `http://localhost:8080`.
 **Hot reload during development:**
 - Press `r` in the terminal to hot restart
 - Press `q` to quit
-
----
-
-## 📁 Project Structure
-
-```text
-meeteor/
-│
-├── lib/                             # Main Flutter code folder
-│   │
-│   ├── main.dart                   # App entry point + Supabase init
-│   │
-│   ├── services/                   # Backend services
-│   │   ├── auth_service.dart       # Supabase auth operations
-│   │   └── auth_gate.dart          # Session verification router
-│   │
-│   ├── screens/                    # UI Screens (one file per page)
-│   │   ├── home.dart               # Main feed and challenges
-│   │   ├── profile.dart            # User profile and demo mode toggling
-│   │   ├── login.dart              # Authentication screen
-│   │   └── nav_wrapper.dart        # Bottom navigation bar
-│   │
-│   └── widgets/                    # Reusable UI components
-│       ├── post_card.dart          # Modular feed post component
-│       └── challenge_card.dart     # Modular daily challenge component
-│
-├── .env                            # Environment variables (not tracked in git)
-├── pubspec.yaml                    # Dependencies & assets
-└── README.md                       # This file
-```
-
-### 📄 File Descriptions
-
-#### `main.dart`
-- App entry point
-- Loads environment variables
-- Initializes Supabase client
-- Sets up app theme and routes to `AuthGate`
-
-#### `services/auth_service.dart`
-- Single file for Supabase auth operations
-- Handles signIn, signUp, and signOut securely via the Supabase client
-
-#### `services/auth_gate.dart`
-- Listens to the Supabase authentication stream
-- Safely routes users to either the `LoginScreen` or the protected `NavWrapper` preventing unauthorized access
-
-#### `screens/home.dart`
-- The core feed fetching dynamic `posts` and joining the `users` table via native Supabase Joins (`.select('*, users(username)')`).
-- Renders the daily challenges UI
-
-#### `widgets/`
-- Modular, React-style stateless components for rendering UI logic cleanly and flexibly across screens, improving readability natively inside the `screens` directory.
 
 ---
 
